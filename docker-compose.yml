@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: csms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: csms
+      POSTGRES_PASSWORD: csms
+      POSTGRES_DB: csms
+    ports:
+      - "5432:5432"
+    volumes:
+      - csms_pgdata:/var/lib/postgresql/data
+volumes:
+  csms_pgdata:

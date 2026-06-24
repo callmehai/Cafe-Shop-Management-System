@@ -1,0 +1,30 @@
+csms/
+├── README.md
+├── docker-compose.yml
+├── docs/CSMS_PROJECT_CONTEXT.md
+├── backend/                 # NestJS + Prisma + PostgreSQL
+│   ├── package.json  tsconfig.json  nest-cli.json  .env.example
+│   ├── prisma/schema.prisma   # data model đầy đủ (+ ProductIngredient)
+│   ├── prisma/seed.ts         # admin/admin123 + data mẫu
+│   └── src/
+│       ├── main.ts  app.module.ts
+│       ├── prisma/            # PrismaService
+│       ├── common/            # RBAC: roles, guards, decorators (CR-06/07)
+│       ├── auth/      ✅ đầy đủ (JWT login, UC10)
+│       ├── users/     ✅ CRUD mẫu (CR-04 chống trùng username)
+│       ├── menu/      🟡 read xong; CRUD product/category TODO (BR-05)
+│       ├── orders/    🟡 skeleton (UC06-12)
+│       ├── payments/  🟡 skeleton (UC10 + BR-02/03/06/08/11)
+│       ├── inventory/ 🟡 skeleton (UC15-16, low-stock)
+│       ├── customers/ 🟡 skeleton (UC19 + loyalty)
+│       ├── tables/    🟡 skeleton
+│       └── reports/   🟡 skeleton (UC20-21)
+└── mobile/                  # Flutter (Android/iOS)
+    ├── pubspec.yaml  analysis_options.yaml
+    └── lib/
+        ├── main.dart  app.dart
+        ├── core/      ✅ config, network(Dio+JWT), router, theme(màu mockup)
+        └── features/
+            ├── auth/      ✅ repository + login page mẫu
+            ├── dashboard/ 🟡 placeholder
+            └── order, payment, menu, inventory, customer, report  🟡 placeholder

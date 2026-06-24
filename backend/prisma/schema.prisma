@@ -1,0 +1,194 @@
+// CSMS data model — từ SRS §5 (Domain Model) + bổ sung ProductIngredient cho BR-08.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- ENUMS ----------
+enum Role {
+  ADMINISTRATOR
+  MANAGER
+  CASHIER
+  BARISTA
+}
+
+enum OrderStatus {
+  OPEN
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  E_WALLET
+}
+
+enum OccupancyStatus {
+  FREE
+  OCCUPIED
+  RESERVED
+}
+
+enum LoyaltyType {
+  EARN
+  REDEEM
+}
+
+// ---------- ENTITIES ----------
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique // CR-04: không trùng
+  passwordHash String
+  fullName     String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders         Order[]         @relation("OrderCreatedBy")
+  payments       Payment[]
+  purchaseOrders PurchaseOrder[]
+}
+
+model Category {
+  id       Int       @id @default(autoincrement())
+  name     String
+  products Product[]
+}
+
+model Product {
+  id          Int                 @id @default(autoincrement())
+  name        String
+  categoryId  Int
+  category    Category            @relation(fields: [categoryId], references: [id])
+  price       Decimal             @db.Decimal(12, 2)
+  size        String? // S/M/L
+  isAvailable Boolean             @default(true) // BR-04
+  description String?
+  orderItems  OrderItem[]
+  recipe      ProductIngredient[] // BR-08: nguyên liệu cấu thành món
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  createdById Int
+  createdBy   User        @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  tableId     Int? // null = takeaway
+  table       Table?      @relation(fields: [tableId], references: [id])
+  customerId  Int?
+  customer    Customer?   @relation(fields: [customerId], references: [id])
+  status      OrderStatus @default(OPEN)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items   OrderItem[]
+  payment Payment? // 1-1; order chỉ 1 payment (BR-03 một phương thức)
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  options   String? // size / sugar level / notes
+  linePrice Decimal @db.Decimal(12, 2)
+}
+
+model Payment {
+  id             Int           @id @default(autoincrement())
+  orderId        Int           @unique
+  order          Order         @relation(fields: [orderId], references: [id])
+  userId         Int
+  user           User          @relation(fields: [userId], references: [id])
+  customerId     Int?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  method         PaymentMethod
+  amount         Decimal       @db.Decimal(12, 2)
+  pointsRedeemed Int?          @default(0)
+  paidAt         DateTime      @default(now())
+
+  loyaltyTransactions LoyaltyTransaction[]
+}
+
+model Table {
+  id              Int             @id @default(autoincrement())
+  number          Int
+  capacity        Int
+  occupancyStatus OccupancyStatus @default(FREE)
+  floor           String?
+  shape           String?
+  orders          Order[]
+}
+
+model Ingredient {
+  id                Int                 @id @default(autoincrement())
+  name              String
+  quantityOnHand    Decimal             @db.Decimal(12, 2)
+  reorderThreshold  Decimal             @db.Decimal(12, 2) // low-stock alert
+  usedInProducts    ProductIngredient[]
+  stockIns          StockIn[]
+}
+
+model Customer {
+  id            Int                  @id @default(autoincrement())
+  fullName      String
+  phone         String?
+  email         String?
+  loyaltyPoints Int                  @default(0)
+  joinedAt      DateTime             @default(now())
+  orders        Order[]
+  payments      Payment[]
+  loyaltyTxns   LoyaltyTransaction[]
+}
+
+model LoyaltyTransaction {
+  id         Int         @id @default(autoincrement())
+  customerId Int
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  paymentId  Int
+  payment    Payment     @relation(fields: [paymentId], references: [id])
+  type       LoyaltyType // EARN / REDEEM
+  points     Int
+  createdAt  DateTime    @default(now())
+}
+
+model PurchaseOrder {
+  id           Int       @id @default(autoincrement())
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id])
+  supplierName String
+  status       String
+  totalAmount  Decimal   @db.Decimal(12, 2)
+  createdAt    DateTime  @default(now())
+  stockIns     StockIn[]
+}
+
+model StockIn {
+  id              Int           @id @default(autoincrement())
+  purchaseOrderId Int
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  ingredientId    Int
+  ingredient      Ingredient    @relation(fields: [ingredientId], references: [id])
+  quantity        Decimal       @db.Decimal(12, 2)
+  unitCost        Decimal       @db.Decimal(12, 2)
+  receivedAt      DateTime      @default(now())
+}
+
+// BỔ SUNG (không có trong ERD gốc): recipe/BOM để BR-08 tự trừ kho hoạt động.
+// Mỗi dòng = lượng `quantity` ingredient cần cho 1 đơn vị product.
+model ProductIngredient {
+  productId    Int
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  quantity     Decimal    @db.Decimal(12, 2)
+
+  @@id([productId, ingredientId])
+}
