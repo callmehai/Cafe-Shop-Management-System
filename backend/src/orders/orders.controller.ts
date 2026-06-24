@@ -2,12 +2,15 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from 
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { UpdatePrepDto } from './dto/update-prep.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { CurrentUser, AuthUser } from '../common/decorators/current-user.decorator';
 
 // §4: Create/Update/Cancel -> Cashier (+ Manager/Admin). Queue -> mọi role đã đăng nhập.
 const WRITE_ROLES = [Role.CASHIER, Role.MANAGER, Role.ADMINISTRATOR] as const;
+// UC12 prep status: Barista là chính, cộng thêm các role vận hành.
+const PREP_ROLES = [Role.BARISTA, Role.CASHIER, Role.MANAGER, Role.ADMINISTRATOR] as const;
 
 @Controller('orders')
 export class OrdersController {
@@ -40,5 +43,23 @@ export class OrdersController {
   @Delete(':id')
   cancel(@Param('id', ParseIntPipe) id: number) {
     return this.orders.cancel(id);
+  }
+
+  // UC12: cập nhật trạng thái chuẩn bị 1 món.
+  @Roles(...PREP_ROLES)
+  @Patch(':id/items/:itemId/prep')
+  prep(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('itemId', ParseIntPipe) itemId: number,
+    @Body() dto: UpdatePrepDto,
+  ) {
+    return this.orders.updateItemPrep(id, itemId, dto.status);
+  }
+
+  // UC12: đánh dấu cả order chuẩn bị xong.
+  @Roles(...PREP_ROLES)
+  @Patch(':id/prep-done')
+  prepDone(@Param('id', ParseIntPipe) id: number) {
+    return this.orders.markPrepDone(id);
   }
 }

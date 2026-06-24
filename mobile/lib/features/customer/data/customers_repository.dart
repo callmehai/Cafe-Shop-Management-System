@@ -29,6 +29,8 @@ class CustomersRepository {
     final res = await _api.dio.patch('/customers/$id', data: body);
     return Customer.fromJson(res.data as Map<String, dynamic>);
   }
+
+  Future<void> delete(int id) => _api.dio.delete('/customers/$id');
 }
 
 final customersRepositoryProvider = Provider<CustomersRepository>(

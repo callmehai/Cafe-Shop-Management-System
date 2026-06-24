@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OccupancyStatus, OrderStatus, Prisma } from '@prisma/client';
+import { OccupancyStatus, OrderStatus, Prisma, PrepStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
@@ -126,6 +126,22 @@ export class OrdersService {
       });
     });
     return this.serialize(order);
+  }
+
+  // UC12 Update Item Prep Status (Barista đẩy pending -> making -> done).
+  async updateItemPrep(orderId: number, itemId: number, status: PrepStatus) {
+    const item = await this.prisma.orderItem.findUnique({ where: { id: itemId } });
+    if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
+    await this.prisma.orderItem.update({ where: { id: itemId }, data: { prepStatus: status } });
+    return this.findOne(orderId);
+  }
+
+  // Đánh dấu cả order đã chuẩn bị xong (tất cả item DONE).
+  async markPrepDone(orderId: number) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    await this.prisma.orderItem.updateMany({ where: { orderId }, data: { prepStatus: PrepStatus.DONE } });
+    return this.findOne(orderId);
   }
 
   // ---------- helpers ----------

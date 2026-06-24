@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 
@@ -53,6 +53,19 @@ export class CustomersService {
   async update(id: number, dto: UpdateCustomerDto) {
     await this.ensure(id);
     return this.prisma.customer.update({ where: { id }, data: { ...dto } });
+  }
+
+  // UC19 Delete Customer — chặn nếu còn lịch sử order/payment (giữ toàn vẹn dữ liệu).
+  async remove(id: number) {
+    await this.ensure(id);
+    const orders = await this.prisma.order.count({ where: { customerId: id } });
+    const payments = await this.prisma.payment.count({ where: { customerId: id } });
+    if (orders > 0 || payments > 0) {
+      throw new ConflictException('Cannot delete a customer with order or payment history.');
+    }
+    await this.prisma.loyaltyTransaction.deleteMany({ where: { customerId: id } });
+    await this.prisma.customer.delete({ where: { id } });
+    return { id };
   }
 
   private async ensure(id: number) {

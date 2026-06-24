@@ -13,6 +13,33 @@ class CustomerDetailsPage extends ConsumerWidget {
   const CustomerDetailsPage({super.key, required this.customerId});
   final int customerId;
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete customer'),
+        content: Text('Delete "$name"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(customersRepositoryProvider).delete(customerId);
+      ref.invalidate(customersProvider);
+      if (context.mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detail = ref.watch(customerDetailProvider(customerId));
@@ -24,14 +51,22 @@ class CustomerDetailsPage extends ConsumerWidget {
         title: const Text('Customer'),
         actions: [
           detail.maybeWhen(
-            data: (c) => IconButton(
-              icon: const Icon(Icons.edit_outlined, color: AppColors.terracotta),
-              onPressed: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => CustomerFormPage(customer: c)),
-                );
-                ref.invalidate(customerDetailProvider(customerId));
-              },
+            data: (c) => Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, color: AppColors.terracotta),
+                  onPressed: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => CustomerFormPage(customer: c)),
+                    );
+                    ref.invalidate(customerDetailProvider(customerId));
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                  onPressed: () => _confirmDelete(context, ref, c.fullName),
+                ),
+              ],
             ),
             orElse: () => const SizedBox.shrink(),
           ),

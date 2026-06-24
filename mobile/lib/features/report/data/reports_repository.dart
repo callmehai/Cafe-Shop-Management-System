@@ -1,8 +1,20 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/providers/core_providers.dart';
 import '../domain/report_models.dart';
+
+/// Tính khoảng ngày từ preset 'today' | '7d' | '30d'.
+({DateTime from, DateTime to}) rangeDates(String range) {
+  final now = DateTime.now();
+  final from = switch (range) {
+    'today' => DateTime(now.year, now.month, now.day),
+    '30d' => now.subtract(const Duration(days: 29)),
+    _ => now.subtract(const Duration(days: 6)),
+  };
+  return (from: from, to: now);
+}
 
 class ReportsRepository {
   ReportsRepository(this._api);
@@ -19,6 +31,17 @@ class ReportsRepository {
       if (to != null) 'to': to,
     });
     return SalesReport.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // UC21: lấy CSV báo cáo (trả về dạng text thuần).
+  Future<String> exportCsv(String range) async {
+    final d = rangeDates(range);
+    final res = await _api.dio.get(
+      '/reports/sales/export',
+      queryParameters: {'from': d.from.toIso8601String(), 'to': d.to.toIso8601String()},
+      options: Options(responseType: ResponseType.plain),
+    );
+    return res.data.toString();
   }
 }
 

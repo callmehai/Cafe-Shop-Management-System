@@ -45,6 +45,24 @@ export class ReportsService {
     };
   }
 
+  // UC21 Export Report — xuất CSV từ sales report.
+  async salesCsv(fromStr?: string, toStr?: string) {
+    const r = await this.sales(fromStr, toStr);
+    const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const lines: string[] = [
+      'Metric,Value',
+      `Total revenue,${r.totalRevenue}`,
+      `Orders,${r.orderCount}`,
+      `Avg ticket,${r.avgTicket}`,
+      `From,${r.from}`,
+      `To,${r.to}`,
+      '',
+      'Product,Qty,Revenue',
+      ...r.topProducts.map((p) => `${esc(p.name)},${p.qty},${p.revenue}`),
+    ];
+    return lines.join('\n');
+  }
+
   // Số liệu dashboard (mọi role gọi). Gộp đủ field để FE chọn theo role.
   async dashboard() {
     const now = new Date();

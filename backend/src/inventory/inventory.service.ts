@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateIngredientDto, UpdateIngredientDto } from './dto/ingredient.dto';
@@ -28,6 +28,17 @@ export class InventoryService {
   async updateIngredient(id: number, dto: UpdateIngredientDto) {
     await this.ensureIngredient(id);
     return this.prisma.ingredient.update({ where: { id }, data: { ...dto } });
+  }
+
+  // UC15 Delete Ingredient — chặn nếu đang dùng trong công thức hoặc có lịch sử nhập kho.
+  async deleteIngredient(id: number) {
+    await this.ensureIngredient(id);
+    const inRecipe = await this.prisma.productIngredient.count({ where: { ingredientId: id } });
+    if (inRecipe > 0) throw new ConflictException('Cannot delete an ingredient used in product recipes.');
+    const received = await this.prisma.stockIn.count({ where: { ingredientId: id } });
+    if (received > 0) throw new ConflictException('Cannot delete an ingredient with stock-in history.');
+    await this.prisma.ingredient.delete({ where: { id } });
+    return { id };
   }
 
   // ---------- Purchase Orders history ----------

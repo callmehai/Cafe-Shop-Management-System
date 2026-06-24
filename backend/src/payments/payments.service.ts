@@ -71,6 +71,8 @@ export class PaymentsService {
       change = dto.cashTendered - amount;
     }
 
+    // Card/E-Wallet: fake — coi như thanh toán thành công ngay (không gọi gateway).
+
     // ----- BR-08: gộp lượng nguyên liệu cần trừ theo công thức -----
     const deductions = new Map<number, number>();
     for (const item of order.items) {

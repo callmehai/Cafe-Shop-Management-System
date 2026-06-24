@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -15,6 +16,23 @@ class ReportsPage extends ConsumerWidget {
 
   static const _ranges = {'today': 'Today', '7d': '7 days', '30d': '30 days'};
 
+  // UC21: lấy CSV và copy vào clipboard (hoạt động cả trên web).
+  Future<void> _export(BuildContext context, WidgetRef ref, String range) async {
+    try {
+      final csv = await ref.read(reportsRepositoryProvider).exportCsv(range);
+      await Clipboard.setData(ClipboardData(text: csv));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report CSV copied to clipboard')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final range = ref.watch(_rangeProvider);
@@ -27,7 +45,15 @@ class ReportsPage extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
-            const PageHeader(title: 'Reports', subtitle: 'Sales & revenue'),
+            PageHeader(
+              title: 'Reports',
+              subtitle: 'Sales & revenue',
+              trailing: TextButton.icon(
+                onPressed: () => _export(context, ref, range),
+                icon: const Icon(Icons.ios_share, size: 18, color: AppColors.terracotta),
+                label: const Text('Export', style: TextStyle(color: AppColors.terracottaDark)),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(

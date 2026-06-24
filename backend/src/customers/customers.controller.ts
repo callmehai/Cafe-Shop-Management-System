@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -30,5 +30,11 @@ export class CustomersController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto) {
     return this.customers.update(id, dto);
+  }
+
+  @Roles(Role.MANAGER, Role.ADMINISTRATOR)
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.customers.remove(id);
   }
 }

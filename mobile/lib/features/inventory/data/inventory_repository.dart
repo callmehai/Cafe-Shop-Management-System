@@ -23,6 +23,8 @@ class InventoryRepository {
     return Ingredient.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<void> deleteIngredient(int id) => _api.dio.delete('/inventory/ingredients/$id');
+
   /// items: [{ingredientId, quantity, unitCost}]
   Future<void> receiveStock({required String supplierName, required List<Map<String, dynamic>> items}) {
     return _api.dio.post('/inventory/stock-in', data: {'supplierName': supplierName, 'items': items});

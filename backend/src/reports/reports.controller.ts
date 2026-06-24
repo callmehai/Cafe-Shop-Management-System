@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Header, Query } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
@@ -11,6 +11,15 @@ export class ReportsController {
   @Get('dashboard')
   dashboard() {
     return this.reports.dashboard();
+  }
+
+  // UC21 Export Report (CSV) — khai báo trước 'sales' cho rõ ràng.
+  @Roles(Role.MANAGER, Role.ADMINISTRATOR)
+  @Get('sales/export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="sales-report.csv"')
+  export(@Query('from') from?: string, @Query('to') to?: string) {
+    return this.reports.salesCsv(from, to);
   }
 
   // Sales report chỉ Manager/Admin (UC20).

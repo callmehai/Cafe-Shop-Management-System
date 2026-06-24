@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateIngredientDto, UpdateIngredientDto } from './dto/ingredient.dto';
 import { StockInDto } from './dto/stock-in.dto';
@@ -29,6 +29,11 @@ export class InventoryController {
   @Patch('ingredients/:id')
   updateIngredient(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateIngredientDto) {
     return this.inventory.updateIngredient(id, dto);
+  }
+
+  @Delete('ingredients/:id')
+  deleteIngredient(@Param('id', ParseIntPipe) id: number) {
+    return this.inventory.deleteIngredient(id);
   }
 
   @Get('purchase-orders')

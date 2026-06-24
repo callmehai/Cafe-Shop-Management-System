@@ -44,6 +44,18 @@ class OrdersRepository {
     final res = await _api.dio.delete('/orders/$id');
     return Order.fromJson(res.data as Map<String, dynamic>);
   }
+
+  // UC12: đẩy trạng thái chuẩn bị 1 món.
+  Future<Order> updateItemPrep(int orderId, int itemId, String status) async {
+    final res = await _api.dio.patch('/orders/$orderId/items/$itemId/prep', data: {'status': status});
+    return Order.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  // UC12: đánh dấu cả order chuẩn bị xong.
+  Future<Order> markPrepDone(int orderId) async {
+    final res = await _api.dio.patch('/orders/$orderId/prep-done');
+    return Order.fromJson(res.data as Map<String, dynamic>);
+  }
 }
 
 final ordersRepositoryProvider = Provider<OrdersRepository>(

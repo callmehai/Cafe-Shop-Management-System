@@ -99,6 +99,14 @@ class InventoryManagementPage extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (isEdit)
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx, false);
+                await _confirmDeleteIngredient(context, ref, ingredient);
+              },
+              child: const Text('Delete', style: TextStyle(color: AppColors.danger)),
+            ),
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
@@ -126,6 +134,32 @@ class InventoryManagementPage extends ConsumerWidget {
       ),
     );
     if (saved == true) ref.invalidate(ingredientsProvider);
+  }
+
+  Future<void> _confirmDeleteIngredient(BuildContext context, WidgetRef ref, Ingredient ingredient) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete ingredient'),
+        content: Text('Delete "${ingredient.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(inventoryRepositoryProvider).deleteIngredient(ingredient.id);
+      ref.invalidate(ingredientsProvider);
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+    }
   }
 }
 

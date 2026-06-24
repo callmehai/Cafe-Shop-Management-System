@@ -28,6 +28,13 @@ enum PaymentMethod {
   E_WALLET
 }
 
+// UC12: trạng thái chuẩn bị từng món (Barista đẩy pending -> making -> done).
+enum PrepStatus {
+  PENDING
+  MAKING
+  DONE
+}
+
 enum OccupancyStatus {
   FREE
   OCCUPIED
@@ -96,9 +103,10 @@ model OrderItem {
   order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId Int
   product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
-  options   String? // size / sugar level / notes
-  linePrice Decimal @db.Decimal(12, 2)
+  quantity   Int
+  options    String? // size / sugar level / notes
+  linePrice  Decimal    @db.Decimal(12, 2)
+  prepStatus PrepStatus @default(PENDING) // UC12
 }
 
 model Payment {

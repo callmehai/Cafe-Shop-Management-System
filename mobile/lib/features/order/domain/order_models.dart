@@ -30,6 +30,38 @@ enum OrderStatus {
       };
 }
 
+/// UC12: trạng thái chuẩn bị từng món.
+enum PrepStatus {
+  pending,
+  making,
+  done;
+
+  static PrepStatus fromApi(String raw) => switch (raw.toUpperCase()) {
+        'MAKING' => PrepStatus.making,
+        'DONE' => PrepStatus.done,
+        _ => PrepStatus.pending,
+      };
+
+  String get api => switch (this) {
+        PrepStatus.pending => 'PENDING',
+        PrepStatus.making => 'MAKING',
+        PrepStatus.done => 'DONE',
+      };
+
+  String get label => switch (this) {
+        PrepStatus.pending => 'Pending',
+        PrepStatus.making => 'Making',
+        PrepStatus.done => 'Done',
+      };
+
+  /// Trạng thái kế tiếp khi tap (pending -> making -> done -> pending).
+  PrepStatus get next => switch (this) {
+        PrepStatus.pending => PrepStatus.making,
+        PrepStatus.making => PrepStatus.done,
+        PrepStatus.done => PrepStatus.pending,
+      };
+}
+
 class OrderItem {
   const OrderItem({
     required this.id,
@@ -37,6 +69,7 @@ class OrderItem {
     required this.productName,
     required this.quantity,
     required this.linePrice,
+    required this.prepStatus,
     this.options,
   });
 
@@ -45,6 +78,7 @@ class OrderItem {
   final String productName;
   final int quantity;
   final double linePrice;
+  final PrepStatus prepStatus;
   final String? options;
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -55,6 +89,7 @@ class OrderItem {
       productName: p is Map ? (p['name'] as String? ?? '') : '',
       quantity: json['quantity'] as int,
       linePrice: parseAmount(json['linePrice']),
+      prepStatus: PrepStatus.fromApi(json['prepStatus'] as String? ?? 'PENDING'),
       options: json['options'] as String?,
     );
   }

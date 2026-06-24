@@ -204,10 +204,52 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                       width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
                   : const Text('Save product'),
             ),
+            if (_isEdit) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _saving ? null : _delete,
+                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                label: const Text('Delete product', style: TextStyle(color: AppColors.danger)),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  side: const BorderSide(color: AppColors.danger),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete product'),
+        content: Text('Delete "${widget.product!.name}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(menuRepositoryProvider).deleteProduct(widget.product!.id);
+      ref.invalidate(productsProvider);
+      ref.invalidate(categoriesProvider);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      // 409 nếu món đã từng vào order.
+      if (mounted) setState(() => _serverError = apiErrorMessage(e));
+    }
   }
 }
 
