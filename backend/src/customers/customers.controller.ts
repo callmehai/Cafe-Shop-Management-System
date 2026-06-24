@@ -1,11 +1,34 @@
-import { Controller } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { CustomersService } from './customers.service';
+import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 
-@Roles(Role.MANAGER, Role.ADMINISTRATOR)
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customers: CustomersService) {}
-  // TODO routes CRUD
+
+  // Đọc: mọi role đã đăng nhập (cashier gắn loyalty khi thanh toán).
+  @Get()
+  list(@Query('search') search?: string) {
+    return this.customers.list(search);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.customers.findOne(id);
+  }
+
+  // Ghi: Manager/Admin.
+  @Roles(Role.MANAGER, Role.ADMINISTRATOR)
+  @Post()
+  create(@Body() dto: CreateCustomerDto) {
+    return this.customers.create(dto);
+  }
+
+  @Roles(Role.MANAGER, Role.ADMINISTRATOR)
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto) {
+    return this.customers.update(id, dto);
+  }
 }

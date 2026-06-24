@@ -1,0 +1,13 @@
+# Claude Code config (may contain secrets)
+.claude/mcp.json
+
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
