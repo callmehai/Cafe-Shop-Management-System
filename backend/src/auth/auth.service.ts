@@ -28,4 +28,13 @@ export class AuthService {
       user: { id: user.id, username: user.username, fullName: user.fullName, role: user.role },
     };
   }
+
+  // CR-06: trả hồ sơ user hiện tại (lấy tươi từ DB để phản ánh role/isActive mới nhất).
+  async me(userId: number) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Session is no longer valid. Please sign in again.');
+    }
+    return { id: user.id, username: user.username, fullName: user.fullName, role: user.role };
+  }
 }
