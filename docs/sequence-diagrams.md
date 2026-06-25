@@ -1,312 +1,843 @@
 # CSMS — Sequence Diagrams
 
-> Mỗi diagram biểu thị luồng data của 1 Use Case.  
-> Actors: **Mobile App** · **API (NestJS)** · **DB (Postgres)**  
-> Thêm actor **Manager** khi cần xác nhận quyền.
+> Mỗi diagram mô tả luồng xử lý của một (hoặc một nhóm) Use Case theo **SRS §2.2.2**.
+> Các tầng (lanes) phản ánh đúng kiến trúc backend NestJS:
+>
+> | Lane | Vai trò | Hiện thực trong code |
+> |---|---|---|
+> | **Mobile App** | UI Flutter + Repository (Dio) + Riverpod | `mobile/lib/features/*` |
+> | **Controller (API)** | Route REST + `JwtAuthGuard`/`RolesGuard` + validate DTO | `*.controller.ts` |
+> | **Service** | Business logic + Business Rules (BR-xx) + `$transaction` | `*.service.ts` |
+> | **Prisma (Repo)** | Data-access / ORM (truy vấn type-safe) | `PrismaService` |
+> | **PostgreSQL** | Lưu trữ dữ liệu | container `csms-db` |
+>
+> Backend **không có** lớp Repository riêng — Prisma đóng vai trò lớp data-access (repo), được inject thẳng vào Service.
 
 ---
 
-## UC-01 · Đăng nhập (Login)
+## Đối chiếu số lượng diagram ↔ Use Case (SRS)
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- POST /auth/login (email+pwd) ---> |
-    |                |-- SELECT user ---> |
-    |                |<-- user row -----  |
-    |                | verify bcrypt pwd  |
-    |<-- { accessToken, refreshToken } -- |
-    |  lưu token vào secure storage       |
-```
+SRS liệt kê **21 use case**. Tài liệu này dùng **16 sequence diagram** — phủ đủ 21 UC bằng cách gộp các use case CRUD cùng một luồng và các quan hệ `«include»`/`«extends»` (vd *Assign Table* extends *Create Order*; *Export Report* includes *View Sales Report*).
 
----
+| # SD | Sequence Diagram | UC (SRS) phủ | Actor |
+|---|---|---|---|
+| SD-01 | Login / Logout | UC-01 | All roles |
+| SD-02 | Manage User (Add / Edit / Delete / Assign Role) | UC-02, UC-03, UC-04, UC-05 | Administrator |
+| SD-03 | Create Order (+ Assign Table) | UC-06, UC-09 | Cashier |
+| SD-04 | Update Order | UC-07 | Cashier |
+| SD-05 | Cancel Order | UC-08 | Cashier |
+| SD-06 | Process Payment | UC-10 | Cashier (+ Manager) |
+| SD-07 | View Order Queue | UC-11 | Barista / Cashier / Manager |
+| SD-08 | Update Item Prep Status | UC-12 | Barista |
+| SD-09 | Manage Product (Add / Edit / Delete / View) | UC-13 | Manager |
+| SD-10 | Manage Category (Add / Edit / Delete) | UC-14 | Manager |
+| SD-11 | Manage Ingredient (Add / Edit / Delete) | UC-15 | Manager |
+| SD-12 | Create Stock-In (Goods Receipt) | UC-16 | Manager |
+| SD-13 | View Inventory Report (+ Low-Stock) | UC-17 | Manager |
+| SD-14 | Manage Table (Add / Edit / Delete) | UC-18 | Manager |
+| SD-15 | Manage Customer (Add / Edit / Delete / View) | UC-19 | Manager |
+| SD-16 | View Sales Report + Export Report | UC-20, UC-21 | Manager |
 
-## UC-02 · Xem Menu (danh sách sản phẩm)
+**Tổng:** 16 diagram → 21/21 UC. ✅
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /menu/products?categoryId --> |
-    |                |-- SELECT products +|
-    |                |   category ------> |
-    |                |<-- rows ---------- |
-    |<-- [{ id, name, price, image }] --- |
-    | render danh sách                    |
-```
-
----
-
-## UC-03 · Quản lý Menu (CRUD sản phẩm — Manager)
-
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- POST /menu/products (Bearer) ---> |
-    |                | guard: role=Manager|
-    |                |-- INSERT product ->|
-    |                |<-- product row --- |
-    |<-- 201 { product } --------------- |
-
-    # PATCH /menu/products/:id  →  UPDATE product
-    # DELETE /menu/products/:id →  kiểm tra còn order không, rồi DELETE
-```
+> Ghi chú: UC-10 *Process Payment* trong SRS có actor phụ **Payment Gateway** (external). Bản build CSMS dùng **thanh toán giả lập** (không gọi gateway thật) — xem SD-06.
 
 ---
 
-## UC-04 · Quản lý Bàn (Tables — Manager)
+## SD-01 · Login / Logout — `UC-01`
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /tables ---------------------->
-    |                |-- SELECT tables -->|
-    |<-- [{ id, name, status }] --------- |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User
+    participant App as Mobile App
+    participant API as AuthController
+    participant SVC as AuthService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
 
-    |-- POST /tables (name) -----------> |
-    |                |-- INSERT table --> |
-    |<-- 201 { table } ----------------- |
+    Note over U,DB: Login
+    U->>App: nhập username + password
+    App->>API: POST /auth/login { username, password }
+    API->>SVC: login(dto)
+    SVC->>ORM: user.findUnique({ where:{ username } })
+    ORM->>DB: SELECT * FROM "User"
+    DB-->>ORM: user row
+    ORM-->>SVC: User | null
+    alt user tồn tại & isActive & bcrypt.compare OK
+        SVC->>SVC: jwt.sign({ sub, role })
+        SVC-->>API: { accessToken, user{id,role,fullName} }
+        API-->>App: 200 OK
+        App->>App: lưu token vào secure storage
+    else sai thông tin / bị khoá
+        SVC-->>API: throw UnauthorizedException
+        API-->>App: 401 Invalid credentials
+    end
 
-    # PATCH /tables/:id/status  →  UPDATE status (AVAILABLE/OCCUPIED/RESERVED)
-```
+    Note over U,DB: Phiên hiện tại (restore) — GET /auth/me
+    App->>API: GET /auth/me (Bearer)
+    API->>SVC: me(userId)
+    SVC->>ORM: user.findUnique({ where:{ id } })
+    ORM->>DB: SELECT
+    DB-->>ORM: row
+    ORM-->>SVC: User
+    SVC-->>API: { user }
+    API-->>App: 200 { user }
 
----
-
-## UC-05 · Tạo Đơn Hàng (Create Order — Cashier)
-
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- POST /orders                      |
-    |   { tableId, items:[{productId,     |
-    |     qty, options}] } ------------>  |
-    |                | validate:          |
-    |                |  ≥1 item (BR-01)   |
-    |                |  product available |
-    |                |  (BR-04)           |
-    |                |-- SELECT products >|
-    |                |<-- prices -------- |
-    |                | calc linePrice     |
-    |                |-- INSERT order  -->|
-    |                |-- INSERT items  -->|
-    |                |-- UPDATE table     |
-    |                |   status=OCCUPIED >|
-    |<-- 201 { orderId, orderNo } ------- |
+    Note over U,App: Logout = client xoá token khỏi secure storage (không cần API)
 ```
 
 ---
 
-## UC-06 · Xem Queue (Barista / Cashier)
+## SD-02 · Manage User (Add / Edit / Delete / Assign Role) — `UC-02, UC-03, UC-04, UC-05`
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Administrator
+    participant App as Mobile App
+    participant API as UsersController
+    participant SVC as UsersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard yêu cầu role = ADMINISTRATOR
+
+    alt View — UC liên quan (danh sách)
+        A->>App: mở User Management
+        App->>API: GET /users?search
+        API->>SVC: findAll(search)
+        SVC->>ORM: user.findMany({ where, orderBy })
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        ORM-->>SVC: User[]
+        SVC-->>API: User[]
+        API-->>App: 200 [ users ]
+    else Add User (UC-02) + Assign Role (UC-05)
+        A->>App: nhập fullName, username, password, role
+        App->>API: POST /users { ..., role }
+        API->>SVC: create(dto)
+        SVC->>SVC: bcrypt.hash(password)
+        SVC->>ORM: user.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: new row
+        ORM-->>SVC: User
+        SVC-->>API: User
+        API-->>App: 201 Created
+    else Edit User (UC-03) / Đổi Role (UC-05)
+        App->>API: PATCH /users/:id { fullName?, role?, isActive? }
+        API->>SVC: update(id, dto)
+        SVC->>ORM: user.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        ORM-->>SVC: User
+        SVC-->>API: User
+        API-->>App: 200 OK
+    else Delete / Deactivate User (UC-04)
+        App->>API: DELETE /users/:id
+        API->>SVC: remove(id)
+        SVC->>ORM: user.update({ data:{ isActive:false } })
+        ORM->>DB: UPDATE (soft-delete)
+        DB-->>ORM: row
+        ORM-->>SVC: User
+        SVC-->>API: { success }
+        API-->>App: 200 OK
+    end
 ```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /orders/queue --------------> |
-    |                |-- SELECT orders    |
-    |                |   WHERE status=    |
-    |                |   OPEN ORDER BY    |
-    |                |   createdAt -----> |
-    |<-- [{ orderId, orderNo, items }] -- |
-    | render hàng đợi pha chế             |
+
+> **UC-05 Assign Role** không có endpoint riêng — được hiện thực qua trường `role` trong DTO của *Add User* và *Edit User* (`«extends» Add User` theo SRS).
+
+---
+
+## SD-03 · Create Order (+ Assign Table) — `UC-06, UC-09`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    participant App as Mobile App
+    participant API as OrdersController
+    participant SVC as OrdersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard: CASHIER
+
+    C->>App: chọn bàn + thêm món (qty, options)
+    App->>API: POST /orders { tableId?, items[] }
+    API->>SVC: create(dto, userId)
+
+    SVC->>SVC: BR-01 — items.length ≥ 1
+    loop mỗi item (buildItems)
+        SVC->>ORM: product.findUnique({ id })
+        ORM->>DB: SELECT product
+        DB-->>ORM: product
+        ORM-->>SVC: Product
+        SVC->>SVC: BR-04 — product.isAvailable == true
+        SVC->>SVC: linePrice = price(DB) × quantity
+    end
+
+    opt có tableId (UC-09 Assign Table)
+        SVC->>ORM: table.findUnique({ id })
+        ORM->>DB: SELECT table
+        DB-->>ORM: table
+    end
+
+    rect rgb(238,246,238)
+        Note over SVC,DB: $transaction (atomic)
+        SVC->>ORM: order.create({ status:OPEN, items })
+        ORM->>DB: INSERT Order + OrderItem(s)
+        opt có tableId
+            SVC->>ORM: table.update({ occupancyStatus:OCCUPIED })
+            ORM->>DB: UPDATE Table
+        end
+    end
+    DB-->>ORM: order + items
+    ORM-->>SVC: Order
+    SVC-->>API: { id, orderNo: "ORD-"+(1000+id), status:OPEN }
+    API-->>App: 201 Created
 ```
 
 ---
 
-## UC-07 · Cập nhật Đơn Hàng (Update Order — Cashier)
+## SD-04 · Update Order — `UC-07`
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- PATCH /orders/:id                 |
-    |   { items:[...] } ---------------> |
-    |                | check status=OPEN  |
-    |                | (BR-07)            |
-    |                |-- DELETE old items>|
-    |                |-- INSERT new items>|
-    |                |-- UPDATE order     |
-    |                |   (subtotal) -----> |
-    |<-- 200 { order } ----------------- |
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    participant App as Mobile App
+    participant API as OrdersController
+    participant SVC as OrdersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
 
----
+    C->>App: sửa món (thêm/bớt/đổi qty) trên đơn OPEN
+    App->>API: PATCH /orders/:id { items[] }
+    API->>SVC: update(id, dto)
+    SVC->>ORM: order.findUnique({ id })
+    ORM->>DB: SELECT
+    DB-->>ORM: order
+    ORM-->>SVC: Order
 
-## UC-08 · Cập nhật Trạng thái Pha Chế (Barista)
-
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- PATCH /orders/:id/items/:itemId   |
-    |   /prep { status } --------------> |
-    |                |-- UPDATE item      |
-    |                |   prepStatus -----> |
-    |<-- 200 { item } ------------------ |
-
-    # Khi tất cả item done:
-    |-- PATCH /orders/:id/prep-done ----> |
-    |                |-- check all items  |
-    |                |   status=done ----> |
-    |                |-- UPDATE order     |
-    |                |   prepStatus=DONE >|
-    |<-- 200 { order } ----------------- |
-```
-
----
-
-## UC-09 · Thanh Toán (Payment — Cashier)
-
-```
-Mobile App          API                  DB          Manager (optional)
-    |                |                    |               |
-    |-- POST /payments                    |               |
-    |   { orderId, method, discount,      |               |
-    |     customerId? } ---------------> |               |
-    |                | calc amount        |               |
-    |                | =subtotal-discount |               |
-    |                |                    |               |
-    |  [nếu discount > 50% (BR-06)]       |               |
-    |<-- 403 "cần Manager duyệt" -------- |               |
-    |-- hiện dialog nhập Manager pwd ---> |               |
-    |-- POST /auth/verify-credentials --> |               |
-    |                |<-- ok / fail ----- |               |
-    |                |                    |               |
-    |  [approved hoặc discount ≤ 50%]     |               |
-    |                |-- $transaction:    |               |
-    |                |   INSERT payment ->|               |
-    |                |   UPDATE order     |               |
-    |                |     status=PAID -->|               |
-    |                |   UPDATE table     |               |
-    |                |     status=        |               |
-    |                |     AVAILABLE ---> |               |
-    |                |   trừ Ingredient   |               |
-    |                |     (BR-08) -----> |               |
-    |                |   cộng loyalty pts>|               |
-    |<-- 201 { payment, loyaltyEarned } - |               |
+    alt order.status == OPEN (BR-07)
+        SVC->>SVC: buildItems() — re-validate BR-04, tính lại linePrice
+        rect rgb(238,246,238)
+            Note over SVC,DB: $transaction
+            SVC->>ORM: orderItem.deleteMany({ orderId })
+            ORM->>DB: DELETE old items
+            SVC->>ORM: order.update({ items: create[] })
+            ORM->>DB: INSERT new items + UPDATE order
+        end
+        DB-->>ORM: updated order
+        ORM-->>SVC: Order
+        SVC-->>API: Order
+        API-->>App: 200 OK
+    else PAID / CANCELLED
+        SVC-->>API: throw ConflictException (BR-07)
+        API-->>App: 409 Only open orders can be edited
+    end
 ```
 
 ---
 
-## UC-10 · Quản lý Khách Hàng (Customers — Manager)
+## SD-05 · Cancel Order — `UC-08`
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /customers?search= ---------->|
-    |                |-- SELECT customers>|
-    |<-- [{ id, name, phone, points }] -- |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    participant App as Mobile App
+    participant API as OrdersController
+    participant SVC as OrdersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
 
-    |-- POST /customers (Manager) ------> |
-    |                |-- INSERT customer >|
-    |<-- 201 { customer } -------------- |
+    C->>App: bấm Cancel (xác nhận)
+    App->>API: DELETE /orders/:id
+    API->>SVC: cancel(id)
+    SVC->>ORM: order.findUnique({ id })
+    ORM->>DB: SELECT
+    DB-->>ORM: order
+    ORM-->>SVC: Order
 
-    |-- PATCH /customers/:id (Manager) -> |
-    |                |-- UPDATE customer >|
-    |<-- 200 { customer } -------------- |
-```
-
----
-
-## UC-11 · Nhập Kho (Stock-In — Manager)
-
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- POST /inventory/stock-in          |
-    |   { ingredientId, qty, note } ----> |
-    |                | guard: Manager     |
-    |                |-- INSERT           |
-    |                |   PurchaseOrder    |
-    |                |   (RECEIVED) -----> |
-    |                |-- INSERT StockIn ->|
-    |                |-- UPDATE ingredient|
-    |                |   quantityOnHand  >|
-    |<-- 201 { stockIn } --------------- |
-```
-
----
-
-## UC-12 · Cảnh báo Tồn Kho Thấp (Low-Stock Alert)
-
-```
-API (background)     DB                  Mobile App
-    |                 |                      |
-    |  [trigger: sau mỗi lần PAID]           |
-    |-- SELECT ingredient                    |
-    |   WHERE quantityOnHand                 |
-    |   < lowStockThreshold ------->         |
-    |<-- [ingredients] ----------           |
-    | đính kèm vào response                  |
-    | payment hoặc GET /inventory ---------->|
-    |                                   hiển thị badge/alert
+    alt order.status == OPEN (BR-07)
+        rect rgb(238,246,238)
+            Note over SVC,DB: $transaction
+            SVC->>ORM: order.update({ status:CANCELLED })
+            ORM->>DB: UPDATE Order
+            opt có tableId
+                SVC->>ORM: table.update({ occupancyStatus:FREE })
+                ORM->>DB: UPDATE Table (giải phóng bàn)
+            end
+        end
+        DB-->>ORM: ok
+        ORM-->>SVC: Order
+        SVC-->>API: { status:CANCELLED }
+        API-->>App: 200 OK
+    else không phải OPEN
+        SVC-->>API: throw ConflictException
+        API-->>App: 409
+    end
 ```
 
 ---
 
-## UC-13 · Xem Báo Cáo Doanh Thu (Reports — Manager)
+## SD-06 · Process Payment — `UC-10`
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /reports/sales                |
-    |   ?from=&to= --------------------> |
-    |                | guard: Manager     |
-    |                |-- SELECT orders    |
-    |                |   WHERE PAID AND   |
-    |                |   date IN range -->|
-    |                |<-- rows ---------- |
-    |                | group & aggregate  |
-    |<-- { totalRevenue, totalOrders,     |
-    |      topProducts, byDate[] } ------ |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor C as Cashier
+    actor M as Manager
+    participant App as Mobile App
+    participant API as PaymentsController
+    participant SVC as PaymentsService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard: CASHIER / MANAGER / ADMIN
+    C->>App: chọn method, discount, customer, điểm đổi
+    App->>API: POST /payments { orderId, method, discount?, customerId?, pointsRedeemed?, cashTendered?, approvalManagerId? }
+    API->>SVC: process(dto, cashierId)
+
+    SVC->>ORM: order.findUnique({ id, include:{ items.product.recipe } })
+    ORM->>DB: SELECT order + items + recipe
+    DB-->>ORM: order
+    ORM-->>SVC: Order
+    SVC->>SVC: BR-07 order==OPEN · BR-01 items≥1
+    SVC->>SVC: subtotal = Σ linePrice
+
+    opt pointsRedeemed > 0 (loyalty)
+        SVC->>ORM: customer.findUnique({ id })
+        ORM->>DB: SELECT customer
+        DB-->>ORM: customer
+        SVC->>SVC: redeem ≤ điểm hiện có; 1pt = 100₫
+    end
+    SVC->>SVC: BR-02 amount = subtotal − (loyalty + manual discount)
+
+    alt discount > 50% subtotal (BR-06)
+        SVC->>ORM: user.findUnique({ approvalManagerId })
+        ORM->>DB: SELECT manager
+        DB-->>ORM: manager
+        M-->>App: nhập mật khẩu duyệt (verifyCredentials)
+        SVC->>SVC: xác thực manager hợp lệ, else 403
+    end
+
+    Note over SVC: Card/E-Wallet = giả lập, KHÔNG gọi gateway thật
+    SVC->>SVC: gom nguyên liệu cần trừ theo ProductIngredient (BR-08)
+
+    rect rgb(238,246,238)
+        Note over SVC,DB: $transaction (atomic)
+        SVC->>ORM: payment.create({ method, amount })
+        ORM->>DB: INSERT Payment
+        SVC->>ORM: order.update({ status:PAID })
+        ORM->>DB: UPDATE Order
+        opt có bàn
+            SVC->>ORM: table.update({ FREE })
+            ORM->>DB: UPDATE Table
+        end
+        loop mỗi ingredient (BR-08)
+            SVC->>ORM: ingredient.update({ decrement qty })
+            ORM->>DB: UPDATE Ingredient
+            SVC->>SVC: nếu ≤ reorderThreshold → low-stock
+        end
+        opt có customer (BR-11)
+            SVC->>ORM: loyaltyTransaction.create(REDEEM/EARN)
+            ORM->>DB: INSERT LoyaltyTransaction
+            SVC->>ORM: customer.update({ loyaltyPoints ± })
+            ORM->>DB: UPDATE Customer
+        end
+    end
+    DB-->>ORM: committed
+    ORM-->>SVC: result
+    SVC-->>API: { payment, amount, change, pointsEarned, newBalance, lowStock[] }
+    API-->>App: 201 Created → màn Payment Success
 ```
 
 ---
 
-## UC-14 · Dashboard Tổng Quan (All roles)
+## SD-07 · View Order Queue — `UC-11`
 
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /reports/dashboard ---------->|
-    |                |-- SELECT:          |
-    |                |  ordersToday       |
-    |                |  revenueToday      |
-    |                |  tablesOccupied    |
-    |                |  lowStockCount --->|
-    |<-- { stats } --------------------- |
-    | render 4 card trên Home screen      |
-```
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Barista / Cashier / Manager
+    participant App as Mobile App
+    participant API as OrdersController
+    participant SVC as OrdersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
 
----
-
-## UC-15 · Quản lý Người Dùng (Users — Admin)
-
-```
-Mobile App          API                  DB
-    |                |                    |
-    |-- GET /users (Admin) ------------->  |
-    |                |-- SELECT users --> |
-    |<-- [{ id, name, role, active }] --- |
-
-    |-- POST /users { name, role, pwd } -> |
-    |                |-- hash pwd         |
-    |                |-- INSERT user ----> |
-    |<-- 201 { user } ------------------ |
-
-    |-- PATCH /users/:id { active } ----> |
-    |                |-- UPDATE user ----> |
-    |<-- 200 { user } ------------------ |
+    B->>App: mở Order Queue
+    App->>API: GET /orders/queue
+    API->>SVC: queue()
+    SVC->>ORM: order.findMany({ where:{ status:OPEN }, include:{ items.product }, orderBy:createdAt })
+    ORM->>DB: SELECT open orders + items
+    DB-->>ORM: rows
+    ORM-->>SVC: Order[]
+    SVC->>SVC: serialize (orderNo, itemCount, prepStatus từng item)
+    SVC-->>API: Order[]
+    API-->>App: 200 [ tickets ]
+    App->>App: render hàng đợi pha chế
 ```
 
 ---
 
-## UC-16 · Làm mới Token (Refresh Token)
+## SD-08 · Update Item Prep Status — `UC-12`
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor B as Barista
+    participant App as Mobile App
+    participant API as OrdersController
+    participant SVC as OrdersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard: BARISTA / CASHIER / MANAGER / ADMIN
+
+    B->>App: tap item để chuyển PENDING → MAKING → DONE
+    App->>API: PATCH /orders/:id/items/:itemId/prep { status }
+    API->>SVC: updateItemPrep(orderId, itemId, status)
+    SVC->>ORM: orderItem.update({ where:{id}, data:{ prepStatus } })
+    ORM->>DB: UPDATE OrderItem
+    DB-->>ORM: row
+    ORM-->>SVC: OrderItem
+    SVC-->>API: OrderItem
+    API-->>App: 200 OK
+
+    opt đánh dấu toàn bộ đơn hoàn tất
+        B->>App: "Mark order completed"
+        App->>API: PATCH /orders/:id/prep-done
+        API->>SVC: markPrepDone(orderId)
+        SVC->>ORM: orderItem.updateMany({ orderId, data:{ prepStatus:DONE } })
+        ORM->>DB: UPDATE all items
+        DB-->>ORM: ok
+        ORM-->>SVC: count
+        SVC-->>API: { order }
+        API-->>App: 200 OK
+    end
 ```
-Mobile App          API                  DB
-    |                |                    |
-    |  [401 response detected]            |
-    |-- POST /auth/refresh                |
-    |   { refreshToken } --------------> |
-    |                | verify JWT sig     |
-    |                |-- SELECT user ---> |
-    |<-- { accessToken (mới) } --------- |
-    | retry request gốc với token mới    |
+
+---
+
+## SD-09 · Manage Product (Add / Edit / Delete / View) — `UC-13`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as ProductsController
+    participant SVC as MenuService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: Ghi (POST/PATCH/DELETE) cần RolesGuard MANAGER/ADMIN (BR-05)
+
+    alt View list
+        App->>API: GET /products?search
+        API->>SVC: listProducts(search)
+        SVC->>ORM: product.findMany({ where, include:category })
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        ORM-->>SVC: Product[]
+        SVC-->>API: Product[]
+        API-->>App: 200
+    else Add (BR-05, MSG02 ≤30 ký tự, MSG08 price bắt buộc)
+        App->>API: POST /products { name, categoryId, price, ... }
+        API->>SVC: createProduct(dto)
+        SVC->>ORM: product.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: row
+        ORM-->>SVC: Product
+        SVC-->>API: Product
+        API-->>App: 201
+    else Edit / toggle isAvailable
+        App->>API: PATCH /products/:id { ... }
+        API->>SVC: updateProduct(id, dto)
+        SVC->>ORM: product.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        ORM-->>SVC: Product
+        SVC-->>API: Product
+        API-->>App: 200
+    else Delete
+        App->>API: DELETE /products/:id
+        API->>SVC: deleteProduct(id)
+        SVC->>ORM: orderItem.count({ productId })
+        ORM->>DB: SELECT COUNT
+        DB-->>ORM: count
+        alt còn được dùng trong order
+            SVC-->>API: throw ConflictException
+            API-->>App: 409 (không thể xoá)
+        else không còn ràng buộc
+            SVC->>ORM: product.delete({ id })
+            ORM->>DB: DELETE
+            DB-->>ORM: ok
+            SVC-->>API: { success }
+            API-->>App: 200
+        end
+    end
 ```
+
+---
+
+## SD-10 · Manage Category (Add / Edit / Delete) — `UC-14`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as CategoriesController
+    participant SVC as MenuService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    alt View
+        App->>API: GET /categories
+        API->>SVC: listCategories()
+        SVC->>ORM: category.findMany()
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        ORM-->>SVC: Category[]
+        SVC-->>API: Category[]
+        API-->>App: 200
+    else Add
+        App->>API: POST /categories { name }
+        API->>SVC: createCategory(dto)
+        SVC->>ORM: category.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: row
+        SVC-->>API: Category
+        API-->>App: 201
+    else Edit
+        App->>API: PATCH /categories/:id { name }
+        API->>SVC: updateCategory(id, dto)
+        SVC->>ORM: category.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        SVC-->>API: Category
+        API-->>App: 200
+    else Delete
+        App->>API: DELETE /categories/:id
+        API->>SVC: deleteCategory(id)
+        SVC->>ORM: product.count({ categoryId })
+        ORM->>DB: SELECT COUNT
+        DB-->>ORM: count
+        alt còn product thuộc category
+            SVC-->>API: throw ConflictException
+            API-->>App: 409
+        else trống
+            SVC->>ORM: category.delete({ id })
+            ORM->>DB: DELETE
+            SVC-->>API: { success }
+            API-->>App: 200
+        end
+    end
+```
+
+---
+
+## SD-11 · Manage Ingredient (Add / Edit / Delete) — `UC-15`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as InventoryController
+    participant SVC as InventoryService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard: MANAGER / ADMIN
+
+    alt View
+        App->>API: GET /inventory/ingredients
+        API->>SVC: listIngredients()
+        SVC->>ORM: ingredient.findMany()
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        SVC-->>API: Ingredient[]
+        API-->>App: 200
+    else Add
+        App->>API: POST /inventory/ingredients { name, quantityOnHand, reorderThreshold }
+        API->>SVC: createIngredient(dto)
+        SVC->>ORM: ingredient.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: row
+        SVC-->>API: Ingredient
+        API-->>App: 201
+    else Edit
+        App->>API: PATCH /inventory/ingredients/:id { ... }
+        API->>SVC: updateIngredient(id, dto)
+        SVC->>ORM: ingredient.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        SVC-->>API: Ingredient
+        API-->>App: 200
+    else Delete
+        App->>API: DELETE /inventory/ingredients/:id
+        API->>SVC: deleteIngredient(id)
+        SVC->>ORM: productIngredient.count / stockIn.count
+        ORM->>DB: SELECT COUNT
+        DB-->>ORM: count
+        alt dùng trong recipe hoặc có lịch sử stock-in
+            SVC-->>API: throw ConflictException
+            API-->>App: 409
+        else không ràng buộc
+            SVC->>ORM: ingredient.delete({ id })
+            ORM->>DB: DELETE
+            SVC-->>API: { success }
+            API-->>App: 200
+        end
+    end
+```
+
+---
+
+## SD-12 · Create Stock-In (Goods Receipt) — `UC-16`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as InventoryController
+    participant SVC as InventoryService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    M->>App: nhập supplier, ingredient, quantity, unitCost
+    App->>API: POST /inventory/stock-in { supplierName, ingredientId, quantity, unitCost }
+    API->>SVC: receiveStock(dto, userId)
+    SVC->>ORM: ingredient.findUnique({ id })
+    ORM->>DB: SELECT
+    DB-->>ORM: ingredient
+
+    rect rgb(238,246,238)
+        Note over SVC,DB: $transaction (BR-12: StockIn gắn với PurchaseOrder)
+        SVC->>ORM: purchaseOrder.create({ status:RECEIVED, totalAmount })
+        ORM->>DB: INSERT PurchaseOrder
+        SVC->>ORM: stockIn.create({ purchaseOrderId, ingredientId, quantity, unitCost })
+        ORM->>DB: INSERT StockIn
+        SVC->>ORM: ingredient.update({ increment quantityOnHand })
+        ORM->>DB: UPDATE Ingredient
+    end
+    DB-->>ORM: committed
+    ORM-->>SVC: { purchaseOrder, stockIn }
+    SVC-->>API: { stockIn }
+    API-->>App: 201 Created
+```
+
+---
+
+## SD-13 · View Inventory Report (+ Low-Stock) — `UC-17`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as InventoryController
+    participant SVC as InventoryService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    M->>App: mở Inventory Report
+    App->>API: GET /inventory/ingredients
+    API->>SVC: listIngredients()
+    SVC->>ORM: ingredient.findMany()
+    ORM->>DB: SELECT
+    DB-->>ORM: rows
+    ORM-->>SVC: Ingredient[]
+    SVC-->>API: Ingredient[]
+    API-->>App: 200 (mức tồn từng nguyên liệu)
+
+    App->>API: GET /inventory/low-stock
+    API->>SVC: lowStock()
+    SVC->>ORM: ingredient.findMany({ where: quantityOnHand ≤ reorderThreshold })
+    ORM->>DB: SELECT
+    DB-->>ORM: rows
+    ORM-->>SVC: Ingredient[]
+    SVC-->>API: Ingredient[]
+    API-->>App: 200 → highlight nguyên liệu sắp hết
+```
+
+---
+
+## SD-14 · Manage Table (Add / Edit / Delete) — `UC-18`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as TablesController
+    participant SVC as TablesService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: Ghi cần RolesGuard MANAGER/ADMIN
+
+    alt View
+        App->>API: GET /tables
+        API->>SVC: list()
+        SVC->>ORM: table.findMany()
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        SVC-->>API: Table[]
+        API-->>App: 200
+    else Add
+        App->>API: POST /tables { number, capacity, floor?, shape }
+        API->>SVC: create(dto)
+        SVC->>ORM: table.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: row
+        SVC-->>API: Table
+        API-->>App: 201
+    else Edit
+        App->>API: PATCH /tables/:id { ... }
+        API->>SVC: update(id, dto)
+        SVC->>ORM: table.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        SVC-->>API: Table
+        API-->>App: 200
+    else Delete
+        App->>API: DELETE /tables/:id
+        API->>SVC: remove(id)
+        SVC->>ORM: kiểm tra occupancyStatus & order OPEN
+        ORM->>DB: SELECT
+        DB-->>ORM: state
+        alt OCCUPIED/RESERVED hoặc còn đơn OPEN
+            SVC-->>API: throw ConflictException
+            API-->>App: 409
+        else FREE & không ràng buộc
+            SVC->>ORM: table.delete({ id })
+            ORM->>DB: DELETE
+            SVC-->>API: { success }
+            API-->>App: 200
+        end
+    end
+```
+
+---
+
+## SD-15 · Manage Customer (Add / Edit / Delete / View) — `UC-19`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as CustomersController
+    participant SVC as CustomersService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: GET mở cho mọi role; POST/PATCH/DELETE cần MANAGER/ADMIN
+
+    alt View list / search
+        App->>API: GET /customers?search
+        API->>SVC: list(search)
+        SVC->>ORM: customer.findMany({ where })
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        SVC-->>API: Customer[]
+        API-->>App: 200
+    else View detail (+ loyalty activity)
+        App->>API: GET /customers/:id
+        API->>SVC: findOne(id)
+        SVC->>ORM: customer.findUnique({ include: loyaltyTransactions })
+        ORM->>DB: SELECT customer + loyalty
+        DB-->>ORM: row
+        SVC-->>API: CustomerDetail
+        API-->>App: 200
+    else Add
+        App->>API: POST /customers { fullName, phone?, email? }
+        API->>SVC: create(dto)
+        SVC->>ORM: customer.create({ data })
+        ORM->>DB: INSERT
+        DB-->>ORM: row
+        SVC-->>API: Customer
+        API-->>App: 201
+    else Edit
+        App->>API: PATCH /customers/:id { ... }
+        API->>SVC: update(id, dto)
+        SVC->>ORM: customer.update({ where:{id}, data })
+        ORM->>DB: UPDATE
+        DB-->>ORM: row
+        SVC-->>API: Customer
+        API-->>App: 200
+    else Delete
+        App->>API: DELETE /customers/:id
+        API->>SVC: remove(id)
+        SVC->>ORM: order.count / payment.count ({ customerId })
+        ORM->>DB: SELECT COUNT
+        DB-->>ORM: count
+        alt còn order/payment tham chiếu
+            SVC-->>API: throw ConflictException
+            API-->>App: 409
+        else không ràng buộc
+            SVC->>ORM: customer.delete({ id })
+            ORM->>DB: DELETE
+            SVC-->>API: { success }
+            API-->>App: 200
+        end
+    end
+```
+
+---
+
+## SD-16 · View Sales Report + Export Report — `UC-20, UC-21`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Manager
+    participant App as Mobile App
+    participant API as ReportsController
+    participant SVC as ReportsService
+    participant ORM as Prisma (Repo)
+    participant DB as PostgreSQL
+
+    Note over API: RolesGuard: MANAGER / ADMIN
+
+    rect rgb(240,240,248)
+        Note over M,DB: UC-20 — View Sales Report
+        M->>App: chọn khoảng ngày (Today / 7d / 30d)
+        App->>API: GET /reports/sales?from&to
+        API->>SVC: sales(from, to)
+        SVC->>ORM: payment.findMany({ where: paidAt IN range, include: order.items })
+        ORM->>DB: SELECT payments + items
+        DB-->>ORM: rows
+        ORM-->>SVC: Payment[]
+        SVC->>SVC: aggregate → totalRevenue, orderCount, avgTicket, topProducts[]
+        SVC-->>API: SalesReport
+        API-->>App: 200 → render biểu đồ/thẻ
+    end
+
+    rect rgb(248,244,240)
+        Note over M,DB: UC-21 — Export Report «include» View Sales Report
+        M->>App: bấm Export
+        App->>API: GET /reports/sales/export?from&to
+        API->>SVC: salesCsv(from, to)
+        SVC->>ORM: payment.findMany(...) (tái dùng truy vấn của sales)
+        ORM->>DB: SELECT
+        DB-->>ORM: rows
+        ORM-->>SVC: Payment[]
+        SVC->>SVC: build CSV string
+        SVC-->>API: csv text
+        API-->>App: 200 (Content-Type: text/csv, Content-Disposition: attachment)
+        App->>App: copy CSV vào clipboard
+    end
+```
+
+---
+
+*Nguồn: CSMS-SRS §2.2.2 (21 use case) + codebase `backend/src/*` (routes/methods thực tế). 16 sequence diagram phủ đủ 21 UC. Cập nhật: 2026-06-25.*
