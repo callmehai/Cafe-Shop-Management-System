@@ -213,25 +213,32 @@ classDiagram
         +removeProduct(id) void
     }
 
-    class MenuController {
-        -menuService MenuService
-        +listCategories() Category[]
-        +createCategory(dto) Category
-        +updateCategory(id, dto) Category
-        +removeCategory(id) void
-        +listProducts(categoryId) Product[]
-        +createProduct(dto) Product
-        +updateProduct(id, dto) Product
-        +removeProduct(id) void
+    class ProductsController {
+        -menu MenuService
+        +list(search) Product[]
+        +create(dto) Product
+        +update(id, dto) Product
+        +remove(id) void
+    }
+
+    class CategoriesController {
+        -menu MenuService
+        +list() Category[]
+        +create(dto) Category
+        +update(id, dto) Category
+        +remove(id) void
     }
 
     Product --> Category : belongsTo
     Product "1" --> "*" ProductIngredient : recipe
-    MenuController --> MenuService : uses
+    ProductsController --> MenuService : uses
+    CategoriesController --> MenuService : uses
     MenuService ..> Product : manages
     MenuService ..> Category : manages
-    MenuController ..> CreateProductDto : receives
-    MenuController ..> CreateCategoryDto : receives
+    ProductsController ..> CreateProductDto : receives
+    ProductsController ..> UpdateProductDto : receives
+    CategoriesController ..> CreateCategoryDto : receives
+    CategoriesController ..> UpdateCategoryDto : receives
 ```
 
 ### Mobile
