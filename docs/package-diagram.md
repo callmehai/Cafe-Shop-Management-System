@@ -1,177 +1,92 @@
-# CSMS — Package Diagram
+# CSMS — Package Diagram (Development View)
 
-> Biểu đồ package thể hiện cấu trúc tổ chức module cấp cao và mối quan hệ phụ thuộc giữa các thành phần.  
-> **Backend:** NestJS 10 + Prisma 5 + PostgreSQL · **Mobile:** Flutter + Riverpod
-
----
-
-## 1. Tổng quan hệ thống
-
-```mermaid
-graph LR
-    subgraph Mobile["📱 Mobile (Flutter + Riverpod)"]
-        direction TB
-        MobFeat["Feature Modules\nauth · order · payment · menu\ncustomer · inventory · tables\nreport · users · dashboard"]
-        MobCore["Core\nApiClient · AppRouter\nRiverpod Providers · Utils"]
-        MobFeat --> MobCore
-    end
-
-    subgraph Backend["🔷 Backend (NestJS + Prisma)"]
-        direction TB
-        NestFeat["Feature Modules\nAuth · Users · Menu · Orders\nPayments · Inventory · Tables\nCustomers · Reports"]
-        PrismaORM["Prisma ORM"]
-        CrossCut["Cross-cutting\nJwtAuthGuard · RolesGuard\n@Public · @Roles · @CurrentUser"]
-        NestFeat --> PrismaORM
-        CrossCut -. "applied globally" .-> NestFeat
-    end
-
-    DB[(PostgreSQL)]
-
-    Mobile -->|"REST + Bearer JWT"| Backend
-    PrismaORM -->|SQL| DB
-```
+> 📐 Editable UML diagram: [`csms-package.drawio`](csms-package.drawio) — 2 pages: **1. Mobile — Development View**, **2. Backend — Development View**.
 
 ---
 
-## 2. Backend — NestJS Module Dependency Graph
+## 0. Where the package diagram sits — the 4+1 view model
 
-Ký hiệu: `──►` import trực tiếp · `- -►` phụ thuộc PrismaModule (shared)
+CSMS is documented with Kruchten's **4+1 multi-view architecture**. Each view answers a different question and is captured by a different artifact:
 
-```mermaid
-graph TD
-    App["AppModule\n(root)"]
+| View | Question it answers | Audience | CSMS artifact |
+|------|---------------------|----------|---------------|
+| **Logical view** | What are the domain concepts / classes and how do they relate? | Analysts, developers | Class Diagrams — [`class-diagrams.md`](class-diagrams.md) |
+| **Process view** | What runs at runtime, and how do the parts communicate over time? | Integrators | Sequence Diagrams — [`sequence-diagrams.md`](sequence-diagrams.md) |
+| **Development view** | How is the **source code** organized into packages / files for the team to build? | Programmers | **This document** + [`csms-package.drawio`](csms-package.drawio) |
+| **Physical / Deployment view** | Which runtime nodes / environments does each part run on? | Ops / deployment | System Architecture — [`system-design.md`](system-design.md) §1.1 |
+| **+1 Scenarios** | Key use cases that tie the other views together | Everyone | SRS §2.2.2 use cases |
 
-    App --> Auth["AuthModule"]
-    App --> Users["UsersModule"]
-    App --> Menu["MenuModule"]
-    App --> Orders["OrdersModule"]
-    App --> Payments["PaymentsModule"]
-    App --> Inventory["InventoryModule"]
-    App --> Tables["TablesModule"]
-    App --> Customers["CustomersModule"]
-    App --> Reports["ReportsModule"]
-    App --> Prisma["PrismaModule"]
-
-    Auth -->|"user lookup\n& bcrypt verify"| Users
-    Orders -->|"lấy price\nkhi tạo items"| Menu
-    Payments -->|"đổi status\nORDER → PAID"| Orders
-    Payments -->|"loyalty\ncalc (BR-11)"| Customers
-    Payments -->|"trừ stock\ntheo recipe (BR-08)"| Inventory
-
-    Users  -.-> Prisma
-    Auth   -.-> Prisma
-    Menu   -.-> Prisma
-    Orders -.-> Prisma
-    Payments -.-> Prisma
-    Inventory -.-> Prisma
-    Tables  -.-> Prisma
-    Customers -.-> Prisma
-    Reports -.-> Prisma
-```
+**➡️ A Package Diagram is the Development View** — it shows the static structure of the source code (packages → files → classes), not runtime behavior.
 
 ---
 
-## 3. Backend — Cấu trúc nội bộ mỗi Module
+## 1. Architecture model (named)
 
-Tất cả module tuân theo pattern 3 lớp:
-
-```mermaid
-graph LR
-    subgraph "FeatureModule (ví dụ: OrdersModule)"
-        direction LR
-        D["DTOs\nCreateXDto · UpdateXDto\n(class-validator)"]
-        C["XController\nHTTP endpoints\n@UseGuards · @Roles"]
-        S["XService\nBusiness logic\nBR enforcement"]
-        P["PrismaService\nDB queries"]
-        D --> C --> S --> P
-    end
-```
+| Sub-system | Architecture pattern | Layers (top depends on the one below) |
+|------------|----------------------|----------------------------------------|
+| **Backend API** | **Layered architecture**, organized as a modular monolith (one package per feature module) | `controller` (REST API) → `service` (business logic) → `data-access` (Prisma ORM) |
+| **Mobile App** | **Feature-first Layered architecture** (a Clean-Architecture-style split per feature) | `presentation` (UI + Riverpod state) → `data` (repository) → `domain` (models) |
 
 ---
 
-## 4. Backend — Cross-cutting Concerns
+## 2. Mobile — Development View
 
-```mermaid
-graph TD
-    subgraph Guards["Guards (APP_GUARD)"]
-        JWT["JwtAuthGuard\n— xác thực Bearer token\n— inject payload → request.user"]
-        Roles["RolesGuard\n— đọc @Roles metadata\n— so sánh với request.user.role"]
-        JWT --> Roles
-    end
+> See `csms-package.drawio` → page **1. Mobile — Development View**.
 
-    subgraph Decorators["Custom Decorators"]
-        Public["@Public()\n— bypass JwtAuthGuard"]
-        RolesDec["@Roles(Role.MANAGER, ...)\n— yêu cầu role cụ thể"]
-        CUser["@CurrentUser()\n— inject user từ JWT payload"]
-    end
-```
+Source root `csms_mobile/lib` is split into `core/` (shared infrastructure) and `features/` (one package per feature). **Every feature repeats the same three layers** — shown here for the `order` feature, with the real source files and the classes each file declares (a single `.dart` file can hold several classes):
+
+| Layer (package) | Source files (examples) | Classes inside the file |
+|-----------------|-------------------------|-------------------------|
+| `presentation` | `order_queue_page.dart` · `create_order_page.dart` · `order_details_page.dart` … | `OrderQueuePage`, `TicketCard`, `PrepChip`, `CreateOrderPage`, `AddItemSheet` |
+| `data` | `orders_repository.dart` | `OrdersRepository` (+ Riverpod providers) |
+| `domain` | `order_models.dart` | `Order`, `OrderItem`, `PrepStatus` («enum») — *one file, several classes* |
+| `core` (shared) | `network/api_client.dart` · `router/app_router.dart` · `utils/format.dart` | `ApiClient`, `AppRouter`, `formatVnd()`, `parseAmount()` |
+
+**Dependencies:** `presentation → data → domain` (a layer depends only on the layer below); `data → core/network` (repositories use `ApiClient`).
 
 ---
 
-## 5. Mobile — Feature & Dependency Graph
+## 3. Backend — Development View
 
-```mermaid
-graph TD
-    subgraph Core["⚙️ Core"]
-        Api["ApiClient\n(Dio + JWT interceptor\n+ 401 auto-refresh)"]
-        Router["AppRouter\n(go_router)"]
-        Providers["Riverpod Providers\n(apiClientProvider\nsecureStorageProvider\nauthRepositoryProvider ...)"]
-        Utils["Utils\n(formatVnd · parseAmount\ndate helpers)"]
-    end
+> See `csms-package.drawio` → page **2. Backend — Development View**.
 
-    subgraph Features["📦 Features"]
-        auth["auth\nlogin_page"]
-        order["order\norder_page · create_order\norder_queue · order_details"]
-        payment["payment\npayment_page · success"]
-        customer["customer\nlist · details · form"]
-        menu["menu\nmenu_page · product_form\nmenu_management"]
-        inventory["inventory\ninventory_page · stock_in"]
-        tables["tables\ntables_management · form"]
-        report["report\nreport_page · reports_page"]
-        users["users\nusers_management"]
-        dashboard["dashboard\ndashboard_page"]
-    end
+Source root `backend/src` groups code into one package per feature module. **Every module repeats the same layered structure** — shown here for the `orders` module, plus the shared packages:
 
-    Features -->|"HTTP calls"| Api
-    Features -->|"DI wiring"| Providers
-    Router --> Features
+| Package | Source files | Classes inside the file |
+|---------|--------------|-------------------------|
+| `orders` (module) | `orders.controller.ts` | `OrdersController` (REST endpoints, `@Roles`) |
+| `orders` (module) | `orders.service.ts` | `OrdersService` (business rules, `$transaction`) |
+| `orders/dto` | `create-order.dto.ts` · `create-order-item.dto.ts` · `update-order.dto.ts` · `update-prep.dto.ts` | `CreateOrderDto`, `CreateOrderItemDto`, `UpdateOrderDto`, `UpdatePrepDto` |
+| `prisma` (shared) | `prisma.service.ts` | `PrismaService` (data-access / ORM) |
+| `auth` (guards, shared) | `jwt-auth.guard.ts` · `roles.guard.ts` | `JwtAuthGuard`, `RolesGuard` |
+| `common` (shared) | `decorators/*.ts` | `@Public`, `@Roles`, `@CurrentUser` |
 
-    order -->|"product picker"| menu
-    order -->|"table picker"| tables
-    payment -->|"order context"| order
-    payment -->|"customer lookup"| customer
-    dashboard -->|"reads DashboardStats"| report
-```
+**Dependencies:** `controller → service → prisma`; `controller → dto`; `controller → guards → common`.
+
+> Other feature modules — `auth`, `users`, `menu`, `payments`, `inventory`, `tables`, `customers`, `reports` — all follow the same `controller → service → dto` layering on top of the shared `prisma` package.
 
 ---
 
-## 6. Mobile — Cấu trúc nội bộ mỗi Feature
+## 4. Package Descriptions
 
-Tất cả feature tuân theo pattern 3 lớp:
+> Each description states the package's **classification** (kind of package / layer), **definition** (purpose), **responsibilities** (what it does and contains), and **dependencies**.
 
-```mermaid
-graph LR
-    subgraph "Feature (ví dụ: order)"
-        direction LR
-        Model["domain/\nDomain Models\n(immutable data classes)"]
-        Repo["data/\nXRepository\n(ApiClient calls → parse JSON)"]
-        Prov["presentation/\nRiverpod Notifier\n(AsyncNotifier / state)"]
-        UI["presentation/\nPages & Widgets\n(ConsumerWidget)"]
-        Model --> Repo --> Prov --> UI
-    end
-```
+### 4.1 Backend sub-system
 
----
+| No | Package | Description |
+|----|---------|-------------|
+| 01 | `controllers` (`*.controller.ts`) | **API layer.** Defines the REST endpoints of each feature module; applies guards/roles, delegates to services, returns responses. Depends on: services, dto, guards. |
+| 02 | `services` (`*.service.ts`) | **Business-logic layer.** Implements application logic and enforces all business rules (BR-01…BR-12) inside atomic Prisma transactions. Depends on: dto, prisma, common. |
+| 03 | `dto` | **Data Transfer Objects.** Define and validate request/response shapes via `class-validator`. Leaf package. |
+| 04 | `auth / guards` | **Security cross-cutting concern.** `JwtAuthGuard` + `RolesGuard`, registered globally via `APP_GUARD`. Depends on: common. |
+| 05 | `prisma` | **Data-access layer.** `PrismaService`, schema and migrations; the single gateway to PostgreSQL. Leaf package. |
+| 06 | `common` | **Shared utilities.** Reusable decorators (`@Public`, `@Roles`, `@CurrentUser`) and helpers. Leaf package. |
 
-## 7. Bảng phụ thuộc quan trọng
+### 4.2 Mobile sub-system
 
-| Phụ thuộc | Business Rule | Ghi chú |
-|-----------|--------------|---------|
-| `PaymentsModule` → `InventoryModule` | BR-08 | Tự động trừ kho theo recipe (`ProductIngredient`) khi order được thanh toán |
-| `PaymentsModule` → `CustomersModule` | BR-11 | Earn 1 point / 10.000₫; redeem bù vào amount |
-| `PaymentsModule` → `OrdersModule` | BR-07 | Chỉ đổi status `OPEN → PAID`; reject nếu đã PAID/CANCELLED |
-| `AuthModule` → `UsersModule` | — | `findByUsername` + bcrypt compare khi login |
-| `OrdersModule` → `MenuModule` | BR-04 | Lấy `price` + kiểm tra `isAvailable` khi thêm item |
-| `payment` → `order` (mobile) | — | Hiển thị chi tiết đơn hàng trước khi xác nhận thanh toán |
-| `order` → `menu` (mobile) | — | Product picker dùng danh sách menu khi tạo đơn |
-| `order` → `tables` (mobile) | — | Table picker khi chọn bàn cho đơn dine-in |
+| No | Package | Description |
+|----|---------|-------------|
+| 01 | `presentation` | **UI layer.** Pages & widgets (`ConsumerWidget`) plus their Riverpod state; renders screens and captures user interaction. Depends on: data, domain. |
+| 02 | `data` | **Repository layer.** Per-feature `Repository` classes that call `ApiClient` and map JSON ↔ domain models. Depends on: domain, core·network. |
+| 03 | `domain` | **Model layer.** Immutable data classes representing the feature's entities. Leaf package. |
+| 04 | `core` | **Shared infrastructure.** `ApiClient` (Dio + JWT interceptor), `AppRouter` (go_router), and helpers (`formatVnd`, `parseAmount`). Leaf package. |
