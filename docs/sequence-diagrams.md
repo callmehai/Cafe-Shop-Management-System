@@ -165,7 +165,7 @@ sequenceDiagram
         SVC-->>-API: User[]
         API-->>-App: 200 [ users ]
         App-->>-A: hiển thị danh sách
-    else Add User (UC-02) + Assign Role (UC-05)
+    else Add User + Assign Role (gộp trong UC04)
         A->>+App: nhập fullName, username, password, role
         App->>+API: POST /users { ..., role }
         API->>+SVC: create(dto)
@@ -232,7 +232,7 @@ sequenceDiagram
         SVC-->>-SVC: linePrice
     end
 
-    opt có tableId (UC-09 Assign Table)
+    opt có tableId (Assign Table — gộp trong UC05)
         SVC->>+ORM: table.findUnique({ id })
         ORM->>+DB: SELECT table
         DB-->>-ORM: table
