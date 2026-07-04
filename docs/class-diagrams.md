@@ -3,6 +3,16 @@
 > Chia theo từng feature CRUD cluster. Mỗi diagram gồm **Backend** (Entity + DTO + Service + Controller) và **Mobile** (Domain Model + Repository).  
 > Nguồn chuẩn: `backend/prisma/schema.prisma` · `backend/src/` · `mobile/lib/features/`
 
+> **Quy ước mũi tên UML (class diagram):**
+>
+> | Ký hiệu | Quan hệ | Ý nghĩa |
+> |---|---|---|
+> | `<|--` | **Generalization / Inheritance** | lớp con kế thừa lớp cha — vd `UpdateXDto` = `PartialType(CreateXDto)`; `CustomerDetail` kế thừa `Customer`. |
+> | `*--` | **Composition** (♦ đặc) | sở hữu mạnh — "part" bị xoá theo "whole". Vd `Order ♦— OrderItem`, `Product ♦— ProductIngredient`. |
+> | `o--` | **Aggregation** (◇ rỗng) | gộp yếu — "part" tồn tại độc lập. Vd `Category ◇— Product`. |
+> | `-->` | **Association** | tham chiếu có hướng. Vd `Controller → Service`, `StockIn → Ingredient`, và thuộc tính kiểu enum. |
+> | `..>` | **Dependency** | phụ thuộc tạm thời qua tham số/kết quả. Vd `Controller ⇢ DTO`, `Service ⇢ Entity`, `Repository ⇢ Model`. |
+
 ---
 
 ## Feature 1 · Auth & Quản lý Người dùng
@@ -90,6 +100,7 @@ classDiagram
     AuthController ..> LoginDto : receives
     UsersController ..> CreateUserDto : receives
     UsersController ..> UpdateUserDto : receives
+    CreateUserDto <|-- UpdateUserDto : PartialType
 ```
 
 ### Mobile
@@ -229,8 +240,8 @@ classDiagram
         +remove(id) void
     }
 
-    Product --> Category : belongsTo
-    Product "1" --> "*" ProductIngredient : recipe
+    Category "1" o-- "*" Product : groups
+    Product "1" *-- "*" ProductIngredient : recipe
     ProductsController --> MenuService : uses
     CategoriesController --> MenuService : uses
     MenuService ..> Product : manages
@@ -239,6 +250,8 @@ classDiagram
     ProductsController ..> UpdateProductDto : receives
     CategoriesController ..> CreateCategoryDto : receives
     CategoriesController ..> UpdateCategoryDto : receives
+    CreateProductDto <|-- UpdateProductDto : PartialType
+    CreateCategoryDto <|-- UpdateCategoryDto : PartialType
 ```
 
 ### Mobile
@@ -270,7 +283,7 @@ classDiagram
         +deleteProduct(id) Future~void~
     }
 
-    Product --> Category : belongsTo
+    Category "1" o-- "*" Product : groups
     MenuRepository ..> Product : returns
     MenuRepository ..> Category : returns
 ```
@@ -337,6 +350,7 @@ classDiagram
     TablesService ..> Table : manages
     TablesController ..> CreateTableDto : receives
     TablesController ..> UpdateTableDto : receives
+    CreateTableDto <|-- UpdateTableDto : PartialType
 ```
 
 ### Mobile
@@ -457,14 +471,14 @@ classDiagram
     }
 
     Order --> OrderStatus
-    Order "1" --> "*" OrderItem : items
+    Order "1" *-- "*" OrderItem : items
     OrderItem --> PrepStatus
     OrdersController --> OrdersService : uses
     OrdersService ..> Order : manages
     OrdersController ..> CreateOrderDto : receives
     OrdersController ..> UpdateOrderDto : receives
     OrdersController ..> UpdatePrepDto : receives
-    CreateOrderDto "1" --> "*" CreateOrderItemDto : contains
+    CreateOrderDto "1" *-- "*" CreateOrderItemDto : contains
 ```
 
 ### Mobile
@@ -517,7 +531,7 @@ classDiagram
     }
 
     Order --> OrderStatus
-    Order "1" --> "*" OrderItem
+    Order "1" *-- "*" OrderItem
     OrderItem --> PrepStatus
     OrdersRepository ..> Order : returns
 ```
@@ -591,7 +605,7 @@ classDiagram
     }
 
     Payment --> PaymentMethod
-    Payment "1" --> "*" LoyaltyTransaction
+    Payment "1" *-- "*" LoyaltyTransaction
     LoyaltyTransaction --> LoyaltyType
     PaymentsController --> PaymentsService : uses
     PaymentsService ..> Payment : creates
@@ -705,13 +719,14 @@ classDiagram
         +receiveStock(dto) PurchaseOrder
     }
 
-    PurchaseOrder "1" --> "*" StockIn : stockIns
+    PurchaseOrder "1" *-- "*" StockIn : stockIns
     StockIn --> Ingredient : refills
     InventoryController --> InventoryService : uses
     InventoryService ..> Ingredient : manages
     InventoryService ..> PurchaseOrder : creates
     InventoryController ..> CreateIngredientDto : receives
     InventoryController ..> StockInDto : receives
+    CreateIngredientDto <|-- UpdateIngredientDto : PartialType
 
     note for InventoryService "deductByRecipe() được gọi nội bộ\ntừ PaymentsService (BR-08)"
 ```
@@ -795,6 +810,7 @@ classDiagram
     CustomersService ..> Customer : manages
     CustomersController ..> CreateCustomerDto : receives
     CustomersController ..> UpdateCustomerDto : receives
+    CreateCustomerDto <|-- UpdateCustomerDto : PartialType
 ```
 
 ### Mobile
@@ -837,8 +853,8 @@ classDiagram
         +deleteCustomer(id) Future~void~
     }
 
-    CustomerDetail --> Customer : extends
-    CustomerDetail "1" --> "*" LoyaltyActivity
+    Customer <|-- CustomerDetail
+    CustomerDetail "1" *-- "*" LoyaltyActivity
     CustomersRepository ..> Customer : returns
     CustomersRepository ..> CustomerDetail : returns
 ```
@@ -904,8 +920,8 @@ classDiagram
     ReportsService ..> SalesReportResponse : returns
     ReportsService ..> DashboardStats : returns
     ReportsController ..> SalesQuery : receives
-    DashboardStats "1" --> "*" TopProduct
-    SalesReportResponse "1" --> "*" SalesReportItem
+    DashboardStats "1" *-- "*" TopProduct
+    SalesReportResponse "1" *-- "*" SalesReportItem
 ```
 
 ### Mobile
@@ -939,7 +955,7 @@ classDiagram
         +getSalesReport(from, to) Future~List~SalesReport~~
     }
 
-    DashboardStats "1" --> "*" TopProduct
+    DashboardStats "1" *-- "*" TopProduct
     ReportsRepository ..> DashboardStats : returns
     ReportsRepository ..> SalesReport : returns
 ```
@@ -954,27 +970,25 @@ Toàn bộ 13 Prisma entity và mối quan hệ:
 classDiagram
     direction LR
 
+    %% Composition (filled diamond) — part is deleted with the whole
+    Order "1" *-- "*" OrderItem : has
+    Product "1" *-- "*" ProductIngredient : recipe
+    PurchaseOrder "1" *-- "*" StockIn : contains
+    Customer "1" *-- "*" LoyaltyTransaction : owns
+
+    %% Aggregation (hollow diamond) — part lives independently
+    Category "1" o-- "*" Product : groups
+
+    %% Association (arrow) — reference
     User "1" --> "*" Order : creates
     User "1" --> "*" Payment : processes
     User "1" --> "*" PurchaseOrder : creates
-
-    Category "1" --> "*" Product : contains
-
     Product "1" --> "*" OrderItem : ordered as
-    Product "1" --> "*" ProductIngredient : recipe
-
-    Order "1" --> "*" OrderItem : has
     Order "1" --> "0..1" Payment : paid by
     Order "*" --> "0..1" Table : at
     Order "*" --> "0..1" Customer : for
-
     Payment "1" --> "*" LoyaltyTransaction : generates
     Payment "*" --> "0..1" Customer : earns points
-
-    Customer "1" --> "*" LoyaltyTransaction : owns
-
-    PurchaseOrder "1" --> "*" StockIn : contains
-
     StockIn "*" --> "1" Ingredient : refills
     ProductIngredient "*" --> "1" Ingredient : uses
 ```
