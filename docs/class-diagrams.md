@@ -605,7 +605,7 @@ classDiagram
     }
 
     Payment --> PaymentMethod
-    Payment "1" *-- "*" LoyaltyTransaction
+    Payment "1" --> "*" LoyaltyTransaction : generates
     LoyaltyTransaction --> LoyaltyType
     PaymentsController --> PaymentsService : uses
     PaymentsService ..> Payment : creates

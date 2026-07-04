@@ -17,37 +17,39 @@
 > - Mỗi lifeline là một **object**; nếu là class thì viết `:ClassName` (dấu `:` đứng trước) — vd `:AuthController`, `:AuthService`, `:PrismaService`. **`:PostgreSQL`** cũng là **object** (data store) → KHÔNG vẽ bằng hình người que (actor).
 > - **Actor** (`Cashier`, `Manager`, `Barista`, `Administrator`) là con người → hình người que.
 > - Object của **mobile app** đặt đúng **tên ứng dụng**: `CSMS Mobile`.
-> - Message dùng `->>+` / `-->>-` để Mermaid vẽ **thanh activation** (execution occurrence). **Self-message** (object gọi chính nó) cũng phải hiện thanh activation lồng: dùng `X->>+X: method()` rồi `X-->>-X: return`.
+> - Message dùng `->>+` / `-->>-` để Mermaid vẽ **thanh activation** (execution occurrence). **Self-message** (một object gọi chính nó) cũng **bắt buộc** hiện thanh activation lồng (thanh chữ nhật dài): viết `X->>+X: method()` rồi `X-->>-X: return`, không dùng `X->>X:` trơn.
 > - Trong các diagram SD-01…SD-16, `CSMS Mobile` được coi là **một** lifeline (hộp đen). Luồng xử lý **bên trong** mobile app (UI → provider → repository → ApiClient) được tách thành **1 sequence diagram bổ sung: SD-00** ngay bên dưới.
 
 ---
 
 ## Đối chiếu số lượng diagram ↔ Use Case (SRS)
 
-SRS liệt kê **21 use case**. Tài liệu này dùng **16 sequence diagram** — phủ đủ 21 UC bằng cách gộp các use case CRUD cùng một luồng và các quan hệ `«include»`/`«extends»` (vd *Assign Table* extends *Create Order*; *Export Report* includes *View Sales Report*).
+SRS §2.2.2 liệt kê **18 use case** (UC01–UC18). Tài liệu này dùng **16 sequence diagram** — phủ đủ 18 UC bằng cách:
+> - **UC03 Authorize** là bước `«include»` chung của mọi use case nghiệp vụ (đã kiểm `JwtAuthGuard` + `RolesGuard` ở lane Controller), không tách diagram riêng.
+> - Gộp các use case CRUD cùng một luồng (Add / Edit / Delete / View chung một diagram).
 
-| # SD | Sequence Diagram | UC (SRS) phủ | Actor |
+| # SD | Sequence Diagram | UC (SRS §2.2.2) phủ | Actor |
 |---|---|---|---|
-| SD-01 | Login / Logout | UC-01 | All roles |
-| SD-02 | Manage User (Add / Edit / Delete / Assign Role) | UC-02, UC-03, UC-04, UC-05 | Administrator |
-| SD-03 | Create Order (+ Assign Table) | UC-06, UC-09 | Cashier |
-| SD-04 | Update Order | UC-07 | Cashier |
-| SD-05 | Cancel Order | UC-08 | Cashier |
-| SD-06 | Process Payment | UC-10 | Cashier (+ Manager) |
-| SD-07 | View Order Queue | UC-11 | Barista / Cashier / Manager |
-| SD-08 | Update Item Prep Status | UC-12 | Barista |
-| SD-09 | Manage Product (Add / Edit / Delete / View) | UC-13 | Manager |
-| SD-10 | Manage Category (Add / Edit / Delete) | UC-14 | Manager |
-| SD-11 | Manage Ingredient (Add / Edit / Delete) | UC-15 | Manager |
-| SD-12 | Create Stock-In (Goods Receipt) | UC-16 | Manager |
-| SD-13 | View Inventory Report (+ Low-Stock) | UC-17 | Manager |
-| SD-14 | Manage Table (Add / Edit / Delete) | UC-18 | Manager |
-| SD-15 | Manage Customer (Add / Edit / Delete / View) | UC-19 | Manager |
-| SD-16 | View Sales Report + Export Report | UC-20, UC-21 | Manager |
+| SD-01 | Login / Logout | UC01, UC02 | All roles |
+| SD-02 | Manage User | UC04 | Administrator |
+| SD-03 | Create Order | UC05 | Cashier |
+| SD-04 | Update Order | UC06 | Cashier |
+| SD-05 | Cancel Order | UC07 | Cashier |
+| SD-06 | Process Payment | UC08 | Cashier (+ Payment Gateway, + Manager) |
+| SD-07 | View Order Queue | UC09 | Barista / Cashier / Manager |
+| SD-08 | Update Item Prep Status | UC09 (prep flow) | Barista |
+| SD-09 | Manage Product (Add / Edit / Delete / View) | UC10 | Manager |
+| SD-10 | Manage Category (Add / Edit / Delete) | UC11 | Manager |
+| SD-11 | Manage Ingredient (Add / Edit / Delete) | UC12 | Manager |
+| SD-12 | Create Stock-In (Goods Receipt) | UC13 | Manager |
+| SD-13 | View Inventory Report (+ Low-Stock) | UC14 | Manager |
+| SD-14 | Manage Table (Add / Edit / Delete) | UC15 | Manager |
+| SD-15 | Manage Customer (Add / Edit / Delete / View) | UC16 | Manager |
+| SD-16 | View Sales Report + Export Report | UC17, UC18 | Manager |
 
-**Tổng:** 16 diagram → 21/21 UC. ✅ · Thêm **SD-00** (bổ sung) mô tả luồng **nội bộ mobile app** (frontend).
+**Tổng:** UC03 *Authorize* nằm trong mọi diagram nghiệp vụ (lane Controller); 16 diagram còn lại phủ 17 use case còn lại → **18/18 UC**. ✅ · Thêm **SD-00** (bổ sung) mô tả luồng **nội bộ mobile app** (frontend).
 
-> Ghi chú: UC-10 *Process Payment* trong SRS có actor phụ **Payment Gateway** (external). Bản build CSMS dùng **thanh toán giả lập** (không gọi gateway thật) — xem SD-06.
+> Ghi chú: UC08 *Process Payment* trong SRS có actor phụ **Payment Gateway** (external). Bản build CSMS dùng **thanh toán giả lập** (không gọi gateway thật) — xem SD-06.
 
 ---
 
@@ -94,7 +96,7 @@ sequenceDiagram
 
 ---
 
-## SD-01 · Login / Logout — `UC-01`
+## SD-01 · Login / Logout — `UC01, UC02`
 
 ```mermaid
 sequenceDiagram
@@ -140,7 +142,7 @@ sequenceDiagram
 
 ---
 
-## SD-02 · Manage User (Add / Edit / Delete / Assign Role) — `UC-02, UC-03, UC-04, UC-05`
+## SD-02 · Manage User (Add / Edit / Delete / Assign Role) — `UC04`
 
 ```mermaid
 sequenceDiagram
@@ -167,7 +169,8 @@ sequenceDiagram
         A->>+App: nhập fullName, username, password, role
         App->>+API: POST /users { ..., role }
         API->>+SVC: create(dto)
-        SVC->>SVC: bcrypt.hash(password)
+        SVC->>+SVC: bcrypt.hash(password)
+        SVC-->>-SVC: passwordHash
         SVC->>+ORM: user.create({ data })
         ORM->>+DB: INSERT
         DB-->>-ORM: new row
@@ -196,11 +199,11 @@ sequenceDiagram
     end
 ```
 
-> **UC-05 Assign Role** không có endpoint riêng — được hiện thực qua trường `role` trong DTO của *Add User* và *Edit User* (`«extends» Add User` theo SRS).
+> **Gán role** không có endpoint riêng — được hiện thực qua trường `role` trong DTO của *Add User* và *Edit User* (nằm trong UC04 *Manage User*).
 
 ---
 
-## SD-03 · Create Order (+ Assign Table) — `UC-06, UC-09`
+## SD-03 · Create Order (+ Assign Table) — `UC05`
 
 ```mermaid
 sequenceDiagram
@@ -216,14 +219,17 @@ sequenceDiagram
     App->>+API: POST /orders { tableId?, items[] }
     API->>+SVC: create(dto, userId)
 
-    SVC->>SVC: BR-01 — items.length ≥ 1
+    SVC->>+SVC: BR-01 — items.length ≥ 1
+    SVC-->>-SVC: ok
     loop mỗi item (buildItems)
         SVC->>+ORM: product.findUnique({ id })
         ORM->>+DB: SELECT product
         DB-->>-ORM: product
         ORM-->>-SVC: Product
-        SVC->>SVC: BR-04 — product.isAvailable == true
-        SVC->>SVC: linePrice = price(DB) × quantity
+        SVC->>+SVC: BR-04 — product.isAvailable == true
+        SVC-->>-SVC: ok
+        SVC->>+SVC: linePrice = price(DB) × quantity
+        SVC-->>-SVC: linePrice
     end
 
     opt có tableId (UC-09 Assign Table)
@@ -250,7 +256,7 @@ sequenceDiagram
 
 ---
 
-## SD-04 · Update Order — `UC-07`
+## SD-04 · Update Order — `UC06`
 
 ```mermaid
 sequenceDiagram
@@ -271,7 +277,8 @@ sequenceDiagram
     ORM-->>-SVC: Order
 
     alt order.status == OPEN (BR-07)
-        SVC->>SVC: buildItems() — re-validate BR-04, tính lại linePrice
+        SVC->>+SVC: buildItems() — re-validate BR-04, tính lại linePrice
+        SVC-->>-SVC: items[] (đã tính linePrice)
         rect rgb(238,246,238)
             SVC->>+ORM: orderItem.deleteMany({ orderId })
             ORM->>+DB: DELETE old items
@@ -294,7 +301,7 @@ sequenceDiagram
 
 ---
 
-## SD-05 · Cancel Order — `UC-08`
+## SD-05 · Cancel Order — `UC07`
 
 ```mermaid
 sequenceDiagram
@@ -338,7 +345,7 @@ sequenceDiagram
 
 ---
 
-## SD-06 · Process Payment — `UC-10`
+## SD-06 · Process Payment — `UC08`
 
 ```mermaid
 sequenceDiagram
@@ -359,17 +366,21 @@ sequenceDiagram
     ORM->>+DB: SELECT order + items + recipe
     DB-->>-ORM: order
     ORM-->>-SVC: Order
-    SVC->>SVC: BR-07 order==OPEN · BR-01 items≥1
-    SVC->>SVC: subtotal = Σ linePrice
+    SVC->>+SVC: BR-07 order==OPEN · BR-01 items≥1
+    SVC-->>-SVC: ok
+    SVC->>+SVC: subtotal = Σ linePrice
+    SVC-->>-SVC: subtotal
 
     opt pointsRedeemed > 0 (loyalty)
         SVC->>+ORM: customer.findUnique({ id })
         ORM->>+DB: SELECT customer
         DB-->>-ORM: customer
         ORM-->>-SVC: Customer
-        SVC->>SVC: redeem ≤ điểm hiện có · 1pt = 100₫
+        SVC->>+SVC: redeem ≤ điểm hiện có · 1pt = 100₫
+        SVC-->>-SVC: redeemValue
     end
-    SVC->>SVC: BR-02 amount = subtotal − (loyalty + manual discount)
+    SVC->>+SVC: BR-02 amount = subtotal − (loyalty + manual discount)
+    SVC-->>-SVC: amount
 
     alt discount > 50% subtotal (BR-06)
         M-->>App: nhập mật khẩu duyệt (verifyCredentials)
@@ -377,11 +388,14 @@ sequenceDiagram
         ORM->>+DB: SELECT manager
         DB-->>-ORM: manager
         ORM-->>-SVC: Manager
-        SVC->>SVC: xác thực manager hợp lệ, else 403
+        SVC->>+SVC: xác thực manager hợp lệ, else 403
+        SVC-->>-SVC: approved
     end
 
-    SVC->>SVC: Card/E-Wallet = giả lập, KHÔNG gọi gateway thật
-    SVC->>SVC: gom nguyên liệu cần trừ theo ProductIngredient (BR-08)
+    SVC->>+SVC: Card/E-Wallet = giả lập, KHÔNG gọi gateway thật
+    SVC-->>-SVC: paid (mock)
+    SVC->>+SVC: gom nguyên liệu cần trừ theo ProductIngredient (BR-08)
+    SVC-->>-SVC: ingredientsToDeduct[]
 
     rect rgb(238,246,238)
         SVC->>+ORM: payment.create({ method, amount })
@@ -396,7 +410,8 @@ sequenceDiagram
         loop mỗi ingredient (BR-08)
             SVC->>ORM: ingredient.update({ decrement qty })
             ORM->>DB: UPDATE Ingredient
-            SVC->>SVC: nếu ≤ reorderThreshold → low-stock
+            SVC->>+SVC: nếu ≤ reorderThreshold → low-stock
+            SVC-->>-SVC: lowStock flag
         end
         opt có customer (BR-11)
             SVC->>ORM: loyaltyTransaction.create(REDEEM/EARN)
@@ -413,7 +428,7 @@ sequenceDiagram
 
 ---
 
-## SD-07 · View Order Queue — `UC-11`
+## SD-07 · View Order Queue — `UC09`
 
 ```mermaid
 sequenceDiagram
@@ -432,16 +447,18 @@ sequenceDiagram
     ORM->>+DB: SELECT open orders + items
     DB-->>-ORM: rows
     ORM-->>-SVC: Order[]
-    SVC->>SVC: serialize (orderNo, itemCount, prepStatus từng item)
+    SVC->>+SVC: serialize (orderNo, itemCount, prepStatus từng item)
+    SVC-->>-SVC: tickets[]
     SVC-->>-API: Order[]
     API-->>-App: 200 [ tickets ]
-    App->>App: render hàng đợi pha chế
+    App->>+App: render hàng đợi pha chế
+    App-->>-App: UI list
     App-->>-B: hiển thị hàng đợi
 ```
 
 ---
 
-## SD-08 · Update Item Prep Status — `UC-12`
+## SD-08 · Update Item Prep Status — `UC09 (prep flow)`
 
 ```mermaid
 sequenceDiagram
@@ -480,7 +497,7 @@ sequenceDiagram
 
 ---
 
-## SD-09 · Manage Product (Add / Edit / Delete / View) — `UC-13`
+## SD-09 · Manage Product (Add / Edit / Delete / View) — `UC10`
 
 ```mermaid
 sequenceDiagram
@@ -544,7 +561,7 @@ sequenceDiagram
 
 ---
 
-## SD-10 · Manage Category (Add / Edit / Delete) — `UC-14`
+## SD-10 · Manage Category (Add / Edit / Delete) — `UC11`
 
 ```mermaid
 sequenceDiagram
@@ -608,7 +625,7 @@ sequenceDiagram
 
 ---
 
-## SD-11 · Manage Ingredient (Add / Edit / Delete) — `UC-15`
+## SD-11 · Manage Ingredient (Add / Edit / Delete) — `UC12`
 
 ```mermaid
 sequenceDiagram
@@ -672,7 +689,7 @@ sequenceDiagram
 
 ---
 
-## SD-12 · Create Stock-In (Goods Receipt) — `UC-16`
+## SD-12 · Create Stock-In (Goods Receipt) — `UC13`
 
 ```mermaid
 sequenceDiagram
@@ -709,7 +726,7 @@ sequenceDiagram
 
 ---
 
-## SD-13 · View Inventory Report (+ Low-Stock) — `UC-17`
+## SD-13 · View Inventory Report (+ Low-Stock) — `UC14`
 
 ```mermaid
 sequenceDiagram
@@ -744,7 +761,7 @@ sequenceDiagram
 
 ---
 
-## SD-14 · Manage Table (Add / Edit / Delete) — `UC-18`
+## SD-14 · Manage Table (Add / Edit / Delete) — `UC15`
 
 ```mermaid
 sequenceDiagram
@@ -808,7 +825,7 @@ sequenceDiagram
 
 ---
 
-## SD-15 · Manage Customer (Add / Edit / Delete / View) — `UC-19`
+## SD-15 · Manage Customer (Add / Edit / Delete / View) — `UC16`
 
 ```mermaid
 sequenceDiagram
@@ -881,7 +898,7 @@ sequenceDiagram
 
 ---
 
-## SD-16 · View Sales Report + Export Report — `UC-20, UC-21`
+## SD-16 · View Sales Report + Export Report — `UC17, UC18`
 
 ```mermaid
 sequenceDiagram
@@ -901,7 +918,8 @@ sequenceDiagram
         ORM->>+DB: SELECT payments + items
         DB-->>-ORM: rows
         ORM-->>-SVC: Payment[]
-        SVC->>SVC: aggregate → totalRevenue, orderCount, avgTicket, topProducts[]
+        SVC->>+SVC: aggregate → totalRevenue, orderCount, avgTicket, topProducts[]
+        SVC-->>-SVC: SalesReport
         SVC-->>-API: SalesReport
         API-->>-App: 200 → render biểu đồ/thẻ
         App-->>-M: hiển thị báo cáo doanh thu
@@ -915,14 +933,16 @@ sequenceDiagram
         ORM->>+DB: SELECT
         DB-->>-ORM: rows
         ORM-->>-SVC: Payment[]
-        SVC->>SVC: build CSV string
+        SVC->>+SVC: build CSV string
+        SVC-->>-SVC: csv text
         SVC-->>-API: csv text
         API-->>-App: 200 (Content-Type: text/csv, Content-Disposition: attachment)
-        App->>App: copy CSV vào clipboard
+        App->>+App: copy CSV vào clipboard
+        App-->>-App: clipboard set
         App-->>-M: file CSV đã sẵn sàng
     end
 ```
 
 ---
 
-*Nguồn: CSMS-SRS §2.2.2 (21 use case) + codebase `backend/src/*` (routes/methods thực tế). 16 sequence diagram phủ đủ 21 UC. Cập nhật: 2026-06-25.*
+*Nguồn: CSMS-SRS §2.2.2 (18 use case UC01–UC18) + codebase `backend/src/*` (routes/methods thực tế). SD-00 + 16 sequence diagram phủ đủ 18 UC (UC03 Authorize = bước «include» trong lane Controller). Cập nhật: 2026-07-05.*
