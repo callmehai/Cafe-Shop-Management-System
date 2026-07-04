@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" type="device" pages="1">
+  <diagram id="arch" name="1.1 System Architecture">
+    <mxGraphModel dx="1100" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1150" pageHeight="720" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="CSMS — System Architecture (1.1)  ·  Box-and-Line, 3-tier client–server" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=15;" parent="1" vertex="1">
+          <mxGeometry x="40" y="20" width="700" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ACTORS -->
+        <mxCell id="actorsBox" value="Café Staff (Actors / Users)" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=none;strokeColor=#999999;verticalAlign=top;fontStyle=2;fontSize=11;container=1;collapsible=0;" parent="1" vertex="1">
+          <mxGeometry x="40" y="90" width="170" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="cashier" value="Cashier" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="actorsBox" vertex="1">
+          <mxGeometry x="65" y="40" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="barista" value="Barista" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="actorsBox" vertex="1">
+          <mxGeometry x="65" y="150" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="manager" value="Manager" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="actorsBox" vertex="1">
+          <mxGeometry x="65" y="260" width="40" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="admin" value="Administrator" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" parent="actorsBox" vertex="1">
+          <mxGeometry x="65" y="370" width="40" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- CLIENT ENVIRONMENT -->
+        <mxCell id="clientEnv" value="Runtime environment: Web Browser (Chrome) on staff device" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#6c8ebf;verticalAlign=top;align=center;fontStyle=2;fontSize=11;container=1;collapsible=0;" parent="1" vertex="1">
+          <mxGeometry x="280" y="120" width="270" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="mobileApp" value="&lt;b&gt;CSMS Mobile App&lt;/b&gt;&#xa;&#xa;• Framework: Flutter 3 + Riverpod (Dart)&#xa;• Compiled to Web; the same codebase&#xa;  also targets Android / iOS / macOS.&#xa;&#xa;Role: presentation client — renders&#xa;role-based UI, calls the REST API,&#xa;keeps the JWT login session." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;align=left;spacingLeft=8;spacingTop=8;spacingRight=6;" parent="clientEnv" vertex="1">
+          <mxGeometry x="20" y="50" width="230" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- SERVER ENVIRONMENT -->
+        <mxCell id="serverEnv" value="Runtime environment: Node.js runtime (application server)" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#82b366;verticalAlign=top;align=center;fontStyle=2;fontSize=11;container=1;collapsible=0;" parent="1" vertex="1">
+          <mxGeometry x="640" y="90" width="300" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="backendApi" value="&lt;b&gt;CSMS Backend API&lt;/b&gt;&#xa;&#xa;• Framework: NestJS 10 + Prisma 5 (TypeScript)&#xa;• Runs on the Node.js runtime.&#xa;&#xa;Role: REST API server — authentication&#xa;(JWT + role-based access control),&#xa;business rules (BR-01…BR-12),&#xa;data access through Prisma ORM." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;align=left;spacingLeft=8;spacingTop=8;spacingRight=6;" parent="serverEnv" vertex="1">
+          <mxGeometry x="20" y="45" width="260" height="165" as="geometry" />
+        </mxCell>
+
+        <!-- DATA ENVIRONMENT -->
+        <mxCell id="dataEnv" value="Runtime environment: Docker container" style="rounded=0;whiteSpace=wrap;html=1;dashed=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;align=center;fontStyle=2;fontSize=11;container=1;collapsible=0;" parent="1" vertex="1">
+          <mxGeometry x="640" y="380" width="300" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="&lt;b&gt;PostgreSQL 16&lt;/b&gt;&#xa;&#xa;Platform: relational DBMS in Docker.&#xa;Role: persistent data store for all&#xa;business data (users, orders, payments,&#xa;inventory, customers, loyalty…)." style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;align=left;spacingLeft=8;spacingTop=14;spacingRight=6;" parent="dataEnv" vertex="1">
+          <mxGeometry x="30" y="40" width="240" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- CONNECTIONS (box-and-line, labeled with method) -->
+        <mxCell id="c1" value="operate via UI&#xa;(touch / click)" style="endArrow=block;html=1;edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=11;" parent="1" source="actorsBox" target="mobileApp" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c2" value="HTTPS · REST / JSON · Bearer JWT" style="endArrow=block;html=1;edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=11;fontStyle=1;" parent="1" source="mobileApp" target="backendApi" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="c3" value="TCP 5432 · SQL (via Prisma ORM)" style="endArrow=block;html=1;edgeStyle=orthogonalEdgeStyle;rounded=0;fontSize=11;fontStyle=1;" parent="1" source="backendApi" target="db" edge="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="note" value="Notation: rectangles = software components / runtime environments (box-and-line); dashed rectangles = runtime host environments; stick figures = human actors; labelled lines = connection method (protocol).&#xa;Scope: Card / E-Wallet payments are mocked inside the Backend — there is no external payment gateway or extra hardware device." style="text;html=1;align=left;verticalAlign=top;fontSize=10;fillColor=#fff8e1;strokeColor=#d6b656;spacing=6;" parent="1" vertex="1">
+          <mxGeometry x="40" y="580" width="900" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
