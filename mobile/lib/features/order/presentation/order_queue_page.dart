@@ -24,6 +24,7 @@ class OrderQueuePage extends ConsumerWidget {
       backgroundColor: AppColors.cream,
       floatingActionButton: allowCreate
           ? FloatingActionButton.extended(
+              heroTag: 'order-queue-fab',
               backgroundColor: AppColors.terracotta,
               foregroundColor: Colors.white,
               onPressed: () async {

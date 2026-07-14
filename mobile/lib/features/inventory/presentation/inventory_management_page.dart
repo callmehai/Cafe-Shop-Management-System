@@ -20,6 +20,7 @@ class InventoryManagementPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.cream,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'inventory-fab',
         backgroundColor: AppColors.terracotta,
         foregroundColor: Colors.white,
         onPressed: () async {

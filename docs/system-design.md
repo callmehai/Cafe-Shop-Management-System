@@ -71,3 +71,134 @@ Each component is described by **what it is**, **its role**, and **the platform/
 ### 1.2 Package Diagram
 
 See [`package-diagram.md`](package-diagram.md) and the diagram [`csms-package.drawio`](csms-package.drawio) — presented as the **Development View** of the 4+1 architecture model, split into Mobile and Backend, showing the layered architecture down to the source-file level.
+
+---
+
+## 2. 4+1 Architectural Views
+
+### 2.1 Logical View (High-Level Domain Class Diagram)
+
+Sơ đồ lớp mô tả cấu trúc dữ liệu miền (domain model) và mối quan hệ giữa các thực thể cốt lõi trong hệ thống:
+
+```mermaid
+classDiagram
+    class User {
+        +int id
+        +string username
+        +string fullName
+        +Role role
+    }
+    class Customer {
+        +int id
+        +string fullName
+        +int loyaltyPoints
+    }
+    class Order {
+        +int id
+        +OrderStatus status
+        +int tableId
+    }
+    class OrderItem {
+        +int id
+        +int quantity
+        +decimal linePrice
+    }
+    class Product {
+        +int id
+        +string name
+        +decimal price
+    }
+    class Payment {
+        +int id
+        +PaymentMethod method
+        +decimal amount
+    }
+    class Ingredient {
+        +int id
+        +string name
+        +decimal quantityOnHand
+    }
+
+    User "1" --> "*" Order : creates
+    User "1" --> "*" Payment : processes
+    Customer "1" *-- "*" Order : places
+    Order "1" *-- "*" OrderItem : contains
+    Product "1" --> "*" OrderItem : ordered_as
+    Order "1" --> "0..1" Payment : paid_by
+    Payment "1" --> "0..1" Customer : earns_points
+    Product "*" o-- "*" Ingredient : recipe
+```
+
+### 2.2 Process View (High-Level Request-Response Flow)
+
+Sơ đồ mô tả quy trình tương tác và giao tiếp giữa các tầng nghiệp vụ từ Client đến Database khi xử lý một request:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Staff as Café Staff
+    participant Client as CSMS Mobile
+    participant Guard as Jwt/Roles Guard
+    participant Ctrl as Controller
+    participant Svc as Service
+    participant Prisma as Prisma ORM
+    participant DB as PostgreSQL
+
+    Staff->>+Client: tương tác UI (ví dụ: Checkout)
+    Client->>+Guard: HTTP POST /payments (Bearer JWT)
+    alt Token hợp lệ & Đúng quyền (RBAC)
+        Guard->>+Ctrl: chuyển tiếp Request
+        Ctrl->>+Svc: process(dto, cashierId)
+        Svc->>+Prisma: $transaction(write actions)
+        Prisma->>+DB: Thực thi các câu lệnh SQL
+        DB-->>-Prisma: Kết quả truy vấn SQL
+        Prisma-->>-Svc: committed transaction
+        Svc-->>-Ctrl: DTO kết quả thanh toán
+        Ctrl-->>-Client: 201 Created (JSON data)
+        Client-->>Staff: hiển thị thông báo thành công
+    else Sai Token hoặc Sai quyền
+        Guard-->>-Client: 401 Unauthorized / 403 Forbidden
+        Client-->>-Staff: hiển thị thông báo lỗi
+    end
+```
+
+### 2.3 Deployment View (System Hardware/Runtime Nodes)
+
+Sơ đồ mô tả cách phân bổ các thành phần phần mềm trên các nút phần cứng vật lý và các môi trường chạy ở runtime:
+
+```mermaid
+flowchart TD
+    subgraph ClientDevice["📱 Client Node: Staff Tablet / Desktop"]
+        Browser["🌐 Web Browser (Chrome)\nRuntime: HTML5/JS VM"]
+        subgraph App["CSMS Mobile App (Flutter Web Assembly)"]
+            UI["UI Components"]
+            Store["Riverpod State"]
+        end
+        Browser --- App
+    end
+
+    subgraph ServerNode["⚙️ Application Server Node: On-Premise VM / VPS"]
+        NodeJS["🟢 Node.js 20 Runtime Environment"]
+        subgraph API["CSMS Backend API (NestJS)"]
+            Router["REST Router & Guards"]
+            Biz["Business Services"]
+            ORM["Prisma Client"]
+        end
+        NodeJS --- API
+    end
+
+    subgraph DatabaseNode["🐳 DB Server Node: Docker Host container"]
+        subgraph DockerHost["Docker Engine Container (csms-db)"]
+            PostgreSQL[(PostgreSQL 16 Relational DBMS)]
+        end
+    end
+
+    subgraph Hardware["🖨️ Peripheral Device Node"]
+        Printer[[Receipt Kitchen Printer]]
+    end
+
+    ClientDevice -->|"HTTPS / REST JSON (Port 4000/3000)"| ServerNode
+    ServerNode -->|"TCP/IP / SQL (Port 5432)"| DatabaseNode
+    ClientDevice -->|"Bluetooth / Local IP"| Hardware
+```
+

@@ -128,6 +128,7 @@ class _ProductsTabState extends ConsumerState<_ProductsTab> {
           right: 16,
           bottom: 16,
           child: FloatingActionButton.extended(
+            heroTag: 'menu-fab',
             backgroundColor: AppColors.terracotta,
             foregroundColor: Colors.white,
             onPressed: () => _openForm(context),

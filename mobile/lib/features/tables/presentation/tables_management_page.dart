@@ -19,6 +19,7 @@ class TablesManagementPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.cream,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'tables-fab',
         backgroundColor: AppColors.terracotta,
         foregroundColor: Colors.white,
         onPressed: () => _openForm(context),

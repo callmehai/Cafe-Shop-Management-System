@@ -18,6 +18,7 @@ class UsersManagementPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.cream,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'users-fab',
         backgroundColor: AppColors.terracotta,
         foregroundColor: Colors.white,
         onPressed: () async {
