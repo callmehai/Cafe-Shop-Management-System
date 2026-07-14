@@ -25,6 +25,7 @@ class _CustomerManagementPageState extends ConsumerState<CustomerManagementPage>
     return Scaffold(
       backgroundColor: AppColors.cream,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'customer-fab',
         backgroundColor: AppColors.terracotta,
         foregroundColor: Colors.white,
         onPressed: () async {
