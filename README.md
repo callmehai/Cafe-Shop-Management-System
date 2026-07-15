@@ -19,6 +19,14 @@ npx prisma migrate dev --name init
 npm run start:dev             # http://localhost:3000/api
 ```
 
+## Cập nhật Database khi pull code mới
+Nếu có sự thay đổi về cấu trúc cơ sở dữ liệu (schema.prisma mới), sau khi `git pull`, các thành viên cần chạy lệnh sau tại thư mục `backend` để cập nhật DB local và sinh Typescript client mới:
+```bash
+cd backend
+npx prisma migrate dev
+npx prisma generate
+```
+
 ## Chạy mobile
 ```bash
 cd mobile

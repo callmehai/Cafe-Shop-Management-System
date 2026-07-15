@@ -48,14 +48,16 @@ enum LoyaltyType {
 
 // ---------- ENTITIES ----------
 model User {
-  id           Int      @id @default(autoincrement())
-  username     String   @unique // CR-04: không trùng
-  passwordHash String
-  fullName     String
-  role         Role
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             Int       @id @default(autoincrement())
+  username       String    @unique // CR-04: không trùng
+  passwordHash   String
+  fullName       String
+  role           Role
+  isActive       Boolean   @default(true)
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   orders         Order[]         @relation("OrderCreatedBy")
   payments       Payment[]
