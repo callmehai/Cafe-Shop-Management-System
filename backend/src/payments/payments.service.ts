@@ -102,15 +102,25 @@ export class PaymentsService {
         });
       }
 
-      // BR-08 trừ kho
+      // BR-08 check stock availability & deduct
       const lowStock: string[] = [];
       for (const [ingredientId, qty] of deductions) {
-        const ing = await tx.ingredient.update({
+        const ing = await tx.ingredient.findUnique({ where: { id: ingredientId } });
+        if (!ing) throw new NotFoundException(`Ingredient with ID ${ingredientId} not found.`);
+
+        const currentStock = Number(ing.quantityOnHand);
+        if (currentStock < qty) {
+          throw new BadRequestException(
+            `Ingredient "${ing.name}" is out of stock. Available: ${currentStock}, Required: ${qty}.`
+          );
+        }
+
+        const updated = await tx.ingredient.update({
           where: { id: ingredientId },
           data: { quantityOnHand: { decrement: qty } },
         });
-        if (Number(ing.quantityOnHand) <= Number(ing.reorderThreshold)) {
-          lowStock.push(ing.name);
+        if (Number(updated.quantityOnHand) <= Number(updated.reorderThreshold)) {
+          lowStock.push(updated.name);
         }
       }
 
