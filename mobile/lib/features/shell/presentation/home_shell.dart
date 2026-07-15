@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../account/presentation/account_view.dart';
 import '../../auth/application/auth_controller.dart';
@@ -11,7 +13,6 @@ import '../../inventory/presentation/inventory_management_page.dart';
 import '../../menu/presentation/menu_management_page.dart';
 import '../../order/presentation/order_queue_page.dart';
 import '../../report/presentation/reports_page.dart';
-import '../../tables/presentation/tables_management_page.dart';
 import '../../users/presentation/users_management_page.dart';
 
 /// 1 tab ở bottom navigation.
@@ -32,6 +33,30 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  Timer? _inactivityTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetInactivityTimer();
+  }
+
+  @override
+  void dispose() {
+    _inactivityTimer?.cancel();
+    super.dispose();
+  }
+
+  void _resetInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(AppConstants.inactivityTimeout, _handleLogout);
+  }
+
+  void _handleLogout() {
+    if (mounted) {
+      ref.read(authControllerProvider.notifier).logout();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,19 +66,23 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final tabs = _tabsForRole(user.role);
     final index = _index.clamp(0, tabs.length - 1);
 
-    return Scaffold(
-      body: IndexedStack(
-        index: index,
-        children: tabs.map((t) => t.body).toList(),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        backgroundColor: AppColors.surface,
-        surfaceTintColor: Colors.transparent,
-        destinations: tabs
-            .map((t) => NavigationDestination(icon: Icon(t.icon), label: t.label))
-            .toList(),
+    return Listener(
+      onPointerDown: (_) => _resetInactivityTimer(),
+      onPointerSignal: (_) => _resetInactivityTimer(),
+      child: Scaffold(
+        body: IndexedStack(
+          index: index,
+          children: tabs.map((t) => t.body).toList(),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: (i) => setState(() => _index = i),
+          backgroundColor: AppColors.surface,
+          surfaceTintColor: Colors.transparent,
+          destinations: tabs
+              .map((t) => NavigationDestination(icon: Icon(t.icon), label: t.label))
+              .toList(),
+        ),
       ),
     );
   }
