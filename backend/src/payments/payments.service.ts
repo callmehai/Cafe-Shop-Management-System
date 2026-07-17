@@ -213,6 +213,13 @@ export class PaymentsService {
     const vnpUrl = process.env.VNP_URL;
     const returnUrl = process.env.VNP_RETURN_URL;
 
+    console.log('--- DEBUG VNPAY CONFIG ---');
+    console.log('process.env.VNP_TMN_CODE:', JSON.stringify(tmnCode));
+    console.log('process.env.VNP_HASH_SECRET:', JSON.stringify(secretKey));
+    console.log('process.env.VNP_URL:', JSON.stringify(vnpUrl));
+    console.log('process.env.VNP_RETURN_URL:', JSON.stringify(returnUrl));
+    console.log('---------------------------');
+
     const date = new Date();
     const createDate = formatVnPayDate(date);
     const subtotal = order.items.reduce((s, it) => s + Number(it.linePrice), 0);
@@ -240,7 +247,9 @@ export class PaymentsService {
     const hmac = crypto.createHmac('sha512', secretKey || '');
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
-    return `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
+    const finalUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
+    console.log('Generated VNPay URL:', finalUrl);
+    return finalUrl;
   }
 
   async handleVnPayIpn(query: any): Promise<any> {
