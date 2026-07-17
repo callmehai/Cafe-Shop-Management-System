@@ -14,6 +14,7 @@ import '../../report/domain/report_models.dart';
 import '../../report/presentation/reports_page.dart';
 import '../../tables/presentation/tables_management_page.dart';
 import '../../users/presentation/users_management_page.dart';
+import '../../shell/presentation/home_shell.dart';
 
 /// Home tab — greeting + số liệu thật (dashboardStatsProvider) + quick actions theo role.
 class DashboardView extends ConsumerWidget {
@@ -54,13 +55,13 @@ class DashboardView extends ConsumerWidget {
   }
 }
 
-class _StatsSection extends StatelessWidget {
+class _StatsSection extends ConsumerWidget {
   const _StatsSection({required this.role, required this.stats});
   final UserRole role;
   final DashboardStats stats;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = role == UserRole.administrator;
     return Column(
       children: [
@@ -70,7 +71,18 @@ class _StatsSection extends StatelessWidget {
         const SizedBox(height: 14),
         Row(
           children: [
-            Expanded(child: _StatCard(value: '${stats.openOrders}', label: 'Open orders', icon: Icons.receipt_long_outlined)),
+            Expanded(
+              child: _StatCard(
+                value: '${stats.openOrders}',
+                label: 'Open orders',
+                icon: Icons.receipt_long_outlined,
+                onTap: (role == UserRole.cashier || role == UserRole.barista)
+                    ? () {
+                        ref.read(homeShellIndexProvider.notifier).state = 1;
+                      }
+                    : null,
+              ),
+            ),
             const SizedBox(width: 14),
             Expanded(
               child: _StatCard(
@@ -180,16 +192,17 @@ class _RevenueCard extends StatelessWidget {
 }
 
 class _StatCard extends StatelessWidget {
-  const _StatCard({required this.value, required this.label, required this.icon, this.suffix, this.sage = false});
+  const _StatCard({required this.value, required this.label, required this.icon, this.suffix, this.sage = false, this.onTap});
   final String value;
   final String? suffix;
   final String label;
   final IconData icon;
   final bool sage;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Widget card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: sage ? AppColors.sage : AppColors.surface,
@@ -214,6 +227,17 @@ class _StatCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: card,
+        ),
+      );
+    }
+    return card;
   }
 }
 

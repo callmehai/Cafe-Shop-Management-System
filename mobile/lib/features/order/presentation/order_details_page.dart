@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/format.dart';
+import '../../../core/utils/toast.dart';
 import '../../menu/data/menu_repository.dart';
 import '../../menu/domain/menu_models.dart';
 import '../../tables/data/tables_repository.dart';
@@ -71,7 +72,7 @@ class _OrderDetailsPageState extends ConsumerState<OrderDetailsPage> {
       ref.invalidate(orderDetailProvider(widget.orderId));
       ref.invalidate(orderQueueProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order saved')));
+        showTopRightToast(context, 'Order saved');
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));

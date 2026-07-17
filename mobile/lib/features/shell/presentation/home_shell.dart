@@ -23,6 +23,8 @@ class _NavTab {
   final Widget body;
 }
 
+final homeShellIndexProvider = StateProvider<int>((ref) => 0);
+
 /// Khung chính sau đăng nhập: AppBar + body theo tab + bottom navigation theo role.
 class HomeShell extends ConsumerStatefulWidget {
   const HomeShell({super.key});
@@ -32,7 +34,6 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
-  int _index = 0;
   Timer? _inactivityTimer;
 
   @override
@@ -64,7 +65,8 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     if (user == null) return const SizedBox.shrink(); // guard sẽ điều hướng về /login
 
     final tabs = _tabsForRole(user.role);
-    final index = _index.clamp(0, tabs.length - 1);
+    final activeIndex = ref.watch(homeShellIndexProvider);
+    final index = activeIndex.clamp(0, tabs.length - 1);
 
     return Listener(
       onPointerDown: (_) => _resetInactivityTimer(),
@@ -76,7 +78,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          onDestinationSelected: (i) => ref.read(homeShellIndexProvider.notifier).state = i,
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           destinations: tabs
