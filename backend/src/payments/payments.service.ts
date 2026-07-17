@@ -6,8 +6,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Customer, LoyaltyType, OccupancyStatus, OrderStatus, Role } from '@prisma/client';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+
+function sortObject(obj: any) {
+  const sorted: any = {};
+  const keys = Object.keys(obj).sort();
+  for (const key of keys) {
+    sorted[key] = encodeURIComponent(obj[key]).replace(/%20/g, '+');
+  }
+  return sorted;
+}
+
+function formatVnPayDate(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const h = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  const s = pad(date.getSeconds());
+  return `${y}${m}${d}${h}${min}${s}`;
+}
 
 // Quy ước loyalty (BR-11): 1 điểm = 100₫ khi đổi; tích 1 điểm mỗi 10.000₫ thực trả.
 const POINT_VALUE = 100;
@@ -102,15 +123,25 @@ export class PaymentsService {
         });
       }
 
-      // BR-08 trừ kho
+      // BR-08 check stock availability & deduct
       const lowStock: string[] = [];
       for (const [ingredientId, qty] of deductions) {
-        const ing = await tx.ingredient.update({
+        const ing = await tx.ingredient.findUnique({ where: { id: ingredientId } });
+        if (!ing) throw new NotFoundException(`Ingredient with ID ${ingredientId} not found.`);
+
+        const currentStock = Number(ing.quantityOnHand);
+        if (currentStock < qty) {
+          throw new BadRequestException(
+            `Ingredient "${ing.name}" is out of stock. Available: ${currentStock}, Required: ${qty}.`
+          );
+        }
+
+        const updated = await tx.ingredient.update({
           where: { id: ingredientId },
           data: { quantityOnHand: { decrement: qty } },
         });
-        if (Number(ing.quantityOnHand) <= Number(ing.reorderThreshold)) {
-          lowStock.push(ing.name);
+        if (Number(updated.quantityOnHand) <= Number(updated.reorderThreshold)) {
+          lowStock.push(updated.name);
         }
       }
 
@@ -151,5 +182,212 @@ export class PaymentsService {
       newBalance: result.newBalance,
       lowStock: result.lowStock,
     };
+  }
+
+  async getVnPayUrl(orderId: number, ipAddress: string): Promise<string> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                recipe: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order with ID ${orderId} not found.`);
+    }
+
+    if (order.status !== OrderStatus.OPEN) {
+      throw new BadRequestException('Order is not in OPEN status.');
+    }
+
+    const tmnCode = process.env.VNP_TMN_CODE;
+    const secretKey = process.env.VNP_HASH_SECRET;
+    const vnpUrl = process.env.VNP_URL;
+    const returnUrl = process.env.VNP_RETURN_URL;
+
+    console.log('--- DEBUG VNPAY CONFIG ---');
+    console.log('process.env.VNP_TMN_CODE:', JSON.stringify(tmnCode));
+    console.log('process.env.VNP_HASH_SECRET:', JSON.stringify(secretKey));
+    console.log('process.env.VNP_URL:', JSON.stringify(vnpUrl));
+    console.log('process.env.VNP_RETURN_URL:', JSON.stringify(returnUrl));
+    console.log('---------------------------');
+
+    const date = new Date();
+    const createDate = formatVnPayDate(date);
+    const subtotal = order.items.reduce((s, it) => s + Number(it.linePrice), 0);
+    const amount = Math.round(subtotal * 100);
+
+    const vnpParams: any = {};
+    vnpParams['vnp_Version'] = '2.1.0';
+    vnpParams['vnp_Command'] = 'pay';
+    vnpParams['vnp_TmnCode'] = tmnCode;
+    vnpParams['vnp_Locale'] = 'vn';
+    vnpParams['vnp_CurrCode'] = 'VND';
+    vnpParams['vnp_TxnRef'] = `ORD-${1000 + order.id}`;
+    vnpParams['vnp_OrderInfo'] = `Thanh toan don hang ORD-${1000 + order.id}`;
+    vnpParams['vnp_OrderType'] = 'other';
+    vnpParams['vnp_Amount'] = amount.toString();
+    vnpParams['vnp_ReturnUrl'] = returnUrl;
+    vnpParams['vnp_IpAddr'] = ipAddress || '127.0.0.1';
+    vnpParams['vnp_CreateDate'] = createDate;
+
+    const sortedParams = sortObject(vnpParams);
+    const signData = Object.keys(sortedParams)
+      .map((key) => `${key}=${sortedParams[key]}`)
+      .join('&');
+
+    const hmac = crypto.createHmac('sha512', secretKey || '');
+    const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    const finalUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
+    console.log('Generated VNPay URL:', finalUrl);
+    return finalUrl;
+  }
+
+  async handleVnPayIpn(query: any): Promise<any> {
+    const secureHash = query['vnp_SecureHash'];
+    if (!secureHash) {
+      return { RspCode: '97', Message: 'Invalid Checksum' };
+    }
+
+    const secretKey = process.env.VNP_HASH_SECRET;
+    const tempQuery = { ...query };
+    delete tempQuery['vnp_SecureHash'];
+    delete tempQuery['vnp_SecureHashType'];
+
+    const sortedParams = sortObject(tempQuery);
+    const signData = Object.keys(sortedParams)
+      .map((key) => `${key}=${sortedParams[key]}`)
+      .join('&');
+
+    const hmac = crypto.createHmac('sha512', secretKey || '');
+    const calculatedHash = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
+
+    if (calculatedHash !== secureHash) {
+      return { RspCode: '97', Message: 'Invalid Checksum' };
+    }
+
+    const txnRef = query['vnp_TxnRef'] as string;
+    const orderNoIdStr = txnRef.replace('ORD-', '');
+    const orderId = parseInt(orderNoIdStr, 10) - 1000;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                recipe: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return { RspCode: '01', Message: 'Order not found' };
+    }
+
+    const subtotal = order.items.reduce((s, it) => s + Number(it.linePrice), 0);
+    const vnpAmount = Math.round(Number(query['vnp_Amount']) / 100);
+    if (vnpAmount !== Math.round(subtotal)) {
+      return { RspCode: '04', Message: 'Invalid amount' };
+    }
+
+    if (order.status === OrderStatus.PAID) {
+      return { RspCode: '02', Message: 'Order already confirmed' };
+    }
+
+    const responseCode = query['vnp_ResponseCode'];
+
+    if (responseCode === '00') {
+      const EARN_PER = 10000;
+      const amountValue = subtotal;
+      
+      const deductions = new Map<number, number>();
+      for (const item of order.items) {
+        for (const r of item.product.recipe) {
+          const need = Number(r.quantity) * item.quantity;
+          deductions.set(r.ingredientId, (deductions.get(r.ingredientId) ?? 0) + need);
+        }
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        const payment = await tx.payment.create({
+          data: {
+            orderId: order.id,
+            userId: order.createdById,
+            customerId: order.customerId,
+            method: 'E_WALLET',
+            amount: amountValue,
+            pointsRedeemed: 0,
+          },
+        });
+
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: OrderStatus.PAID },
+        });
+
+        if (order.tableId) {
+          await tx.table.update({
+            where: { id: order.tableId },
+            data: { occupancyStatus: OccupancyStatus.FREE },
+          });
+        }
+
+        for (const [ingredientId, qty] of deductions) {
+          const ing = await tx.ingredient.findUnique({ where: { id: ingredientId } });
+          if (!ing) throw new NotFoundException(`Ingredient with ID ${ingredientId} not found.`);
+
+          const currentStock = Number(ing.quantityOnHand);
+          if (currentStock < qty) {
+            throw new BadRequestException(
+              `Ingredient "${ing.name}" is out of stock. Available: ${currentStock}, Required: ${qty}.`
+            );
+          }
+
+          await tx.ingredient.update({
+            where: { id: ingredientId },
+            data: { quantityOnHand: { decrement: qty } },
+          });
+        }
+
+        if (order.customerId) {
+          const customer = await tx.customer.findUnique({ where: { id: order.customerId } });
+          if (customer) {
+            const pointsEarned = Math.floor(amountValue / EARN_PER);
+            if (pointsEarned > 0) {
+              await tx.loyaltyTransaction.create({
+                data: {
+                  customerId: customer.id,
+                  paymentId: payment.id,
+                  type: LoyaltyType.EARN,
+                  points: pointsEarned,
+                },
+              });
+              await tx.customer.update({
+                where: { id: customer.id },
+                data: { loyaltyPoints: { increment: pointsEarned } },
+              });
+            }
+          }
+        }
+      });
+
+      return { RspCode: '00', Message: 'Confirm success' };
+    } else {
+      return { RspCode: '00', Message: 'Confirm success' };
+    }
   }
 }

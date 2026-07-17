@@ -28,6 +28,11 @@ class PaymentsRepository {
     });
     return PaymentResult.fromJson(res.data as Map<String, dynamic>);
   }
+
+  Future<String> getVnPayUrl(int orderId) async {
+    final res = await _api.dio.post('/payments/$orderId/vnpay-url');
+    return res.data['url'] as String;
+  }
 }
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>(

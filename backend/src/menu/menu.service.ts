@@ -30,6 +30,7 @@ export class MenuService {
         size: dto.size,
         description: dto.description,
         isAvailable: dto.isAvailable ?? true,
+        imageUrl: dto.imageUrl,
       },
       include: { category: true },
     });

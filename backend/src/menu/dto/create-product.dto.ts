@@ -31,4 +31,8 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isAvailable?: boolean; // BR-04: hiển thị trên order menu hay không
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }

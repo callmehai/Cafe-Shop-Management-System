@@ -152,6 +152,15 @@ class _ProductRow extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
 
+  Widget _fallbackLetter() {
+    return Center(
+      child: Text(
+        product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+        style: const TextStyle(color: AppColors.terracottaDark, fontWeight: FontWeight.w700, fontSize: 18),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -170,11 +179,17 @@ class _ProductRow extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.terracotta.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
           ),
-          alignment: Alignment.center,
-          child: Text(
-            product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
-            style: const TextStyle(color: AppColors.terracottaDark, fontWeight: FontWeight.w700, fontSize: 18),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: product.fullImageUrl != null
+                ? Image.network(
+                    product.fullImageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => _fallbackLetter(),
+                  )
+                : _fallbackLetter(),
           ),
         ),
         title: Text(product.name, style: const TextStyle(fontWeight: FontWeight.w600)),

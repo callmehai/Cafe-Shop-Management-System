@@ -279,6 +279,15 @@ class _ProductTile extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
 
+  Widget _fallbackLetter() {
+    return Center(
+      child: Text(
+        product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
+        style: const TextStyle(color: AppColors.terracottaDark, fontWeight: FontWeight.w700, fontSize: 18),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -298,14 +307,20 @@ class _ProductTile extends StatelessWidget {
             children: [
               Container(
                 width: 40, height: 40,
-                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: AppColors.terracotta.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
                 ),
-                child: Text(
-                  product.name.isNotEmpty ? product.name[0].toUpperCase() : '?',
-                  style: const TextStyle(color: AppColors.terracottaDark, fontWeight: FontWeight.w700, fontSize: 18),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: product.fullImageUrl != null
+                      ? Image.network(
+                          product.fullImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _fallbackLetter(),
+                        )
+                      : _fallbackLetter(),
                 ),
               ),
               const Spacer(),

@@ -50,14 +50,14 @@ async function main() {
   await prisma.ingredient.create({ data: { name: 'Sugar', quantityOnHand: 40, reorderThreshold: 8 } });
 
   // ---------- PRODUCTS (giá & size khớp mockup Figma) ----------
-  const cappuccino = await prisma.product.create({ data: { name: 'Cappuccino', categoryId: coffee.id, price: 45000, size: 'S/M/L' } });
-  const latte = await prisma.product.create({ data: { name: 'Latte', categoryId: coffee.id, price: 50000, size: 'S/M/L' } });
-  const espresso = await prisma.product.create({ data: { name: 'Espresso', categoryId: coffee.id, price: 35000, size: 'S' } });
-  const matchaLatte = await prisma.product.create({ data: { name: 'Matcha Latte', categoryId: tea.id, price: 60000, size: 'M/L' } });
-  await prisma.product.create({ data: { name: 'Croissant', categoryId: pastry.id, price: 40000 } });
-  await prisma.product.create({ data: { name: 'Pain au Chocolat', categoryId: pastry.id, price: 45000 } });
+  const cappuccino = await prisma.product.create({ data: { name: 'Cappuccino', categoryId: coffee.id, price: 45000, size: 'S/M/L', imageUrl: '/uploads/default/cappuccino.png' } });
+  const latte = await prisma.product.create({ data: { name: 'Latte', categoryId: coffee.id, price: 50000, size: 'S/M/L', imageUrl: '/uploads/default/latte.png' } });
+  const espresso = await prisma.product.create({ data: { name: 'Espresso', categoryId: coffee.id, price: 35000, size: 'S', imageUrl: '/uploads/default/espresso.png' } });
+  const matchaLatte = await prisma.product.create({ data: { name: 'Matcha Latte', categoryId: tea.id, price: 60000, size: 'M/L', imageUrl: '/uploads/default/matcha_latte.png' } });
+  await prisma.product.create({ data: { name: 'Croissant', categoryId: pastry.id, price: 40000, imageUrl: '/uploads/default/croissant.png' } });
+  await prisma.product.create({ data: { name: 'Pain au Chocolat', categoryId: pastry.id, price: 45000, imageUrl: '/uploads/default/pain_au_chocolat.png' } });
   // Cold Brew: demo trạng thái hết hàng (BR-04 -> ẩn khỏi order menu).
-  const coldBrew = await prisma.product.create({ data: { name: 'Cold Brew', categoryId: cold.id, price: 52000, size: 'M/L', isAvailable: false } });
+  const coldBrew = await prisma.product.create({ data: { name: 'Cold Brew', categoryId: cold.id, price: 52000, size: 'M/L', isAvailable: false, imageUrl: '/uploads/default/cold_brew.png' } });
 
   // ---------- RECIPE / BOM (BR-08: tự trừ kho khi thanh toán) ----------
   await prisma.productIngredient.createMany({
