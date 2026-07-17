@@ -79,6 +79,7 @@ model Product {
   size        String? // S/M/L
   isAvailable Boolean             @default(true) // BR-04
   description String?
+  imageUrl    String?
   orderItems  OrderItem[]
   recipe      ProductIngredient[] // BR-08: nguyên liệu cấu thành món
 }

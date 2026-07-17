@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
@@ -10,6 +11,7 @@ import '../../auth/domain/app_user.dart';
 import '../../customer/data/customers_repository.dart';
 import '../../customer/domain/customer_model.dart';
 import '../../order/data/orders_repository.dart';
+import '../../order/domain/order_models.dart';
 import '../../tables/data/tables_repository.dart';
 import '../data/payments_repository.dart';
 import '../domain/payment_models.dart';
@@ -101,6 +103,57 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         return;
       }
     }
+
+    if (_method == PaymentMethod.eWallet) {
+      setState(() => _submitting = true);
+      try {
+        final url = await ref.read(paymentsRepositoryProvider).getVnPayUrl(widget.orderId);
+        
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } else {
+          throw 'Could not launch payment URL';
+        }
+
+        if (!mounted) return;
+        final paid = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _VnPayWaitingDialog(orderId: widget.orderId),
+        );
+
+        if (paid == true) {
+          final pointsEarned = (subtotal / 10000).floor();
+          final result = PaymentResult(
+            orderNo: 'ORD-${1000 + widget.orderId}',
+            method: 'E_WALLET',
+            subtotal: subtotal,
+            discount: _totalDiscount(subtotal),
+            amount: amount,
+            change: 0.0,
+            pointsRedeemed: _pointsRedeemed,
+            pointsEarned: pointsEarned,
+            lowStock: [],
+          );
+          
+          ref.invalidate(orderQueueProvider);
+          ref.invalidate(orderDetailProvider(widget.orderId));
+          ref.invalidate(tablesProvider);
+          ref.invalidate(customersProvider);
+          
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => PaymentSuccessPage(result: result)),
+          );
+        }
+      } catch (e) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(apiErrorMessage(e))));
+      } finally {
+        if (mounted) setState(() => _submitting = false);
+      }
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
       final result = await ref.read(paymentsRepositoryProvider).process(
@@ -640,6 +693,80 @@ class _ManagerApprovalDialogState extends ConsumerState<_ManagerApprovalDialog> 
           child: _busy
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
               : const Text('Approve'),
+        ),
+      ],
+    );
+  }
+}
+
+class _VnPayWaitingDialog extends ConsumerStatefulWidget {
+  const _VnPayWaitingDialog({required this.orderId});
+  final int orderId;
+
+  @override
+  ConsumerState<_VnPayWaitingDialog> createState() => _VnPayWaitingDialogState();
+}
+
+class _VnPayWaitingDialogState extends ConsumerState<_VnPayWaitingDialog> {
+  bool _checking = false;
+  String? _error;
+
+  Future<void> _checkStatus() async {
+    setState(() {
+      _checking = true;
+      _error = null;
+    });
+    try {
+      final order = await ref.read(ordersRepositoryProvider).getOrder(widget.orderId);
+      if (order.status == OrderStatus.paid) {
+        if (mounted) Navigator.pop(context, true);
+      } else {
+        setState(() => _error = 'Payment not received yet. Please try again.');
+      }
+    } catch (e) {
+      setState(() => _error = apiErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: Row(
+        children: const [
+          Icon(Icons.payment, color: AppColors.terracotta),
+          SizedBox(width: 8),
+          Text('VNPay Sandbox'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'A browser window was opened to complete the payment. Please process the payment on VNPay\'s Sandbox portal.',
+            style: TextStyle(fontSize: 14, height: 1.4),
+          ),
+          const SizedBox(height: 16),
+          if (_error != null)
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.danger, fontSize: 13),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _checking ? null : _checkStatus,
+          child: _checking
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Verify Payment'),
         ),
       ],
     );

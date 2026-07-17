@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
@@ -14,6 +15,14 @@ class MenuRepository {
       if (search != null && search.isNotEmpty) 'search': search,
     });
     return (res.data as List).map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<String> uploadProductImage(String filePath) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath),
+    });
+    final res = await _api.dio.post('/products/upload', data: formData);
+    return res.data['url'] as String;
   }
 
   Future<Product> createProduct(Map<String, dynamic> body) async {

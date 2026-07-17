@@ -1,3 +1,4 @@
+import '../../../core/config/env.dart';
 import '../../../core/utils/format.dart';
 
 /// Danh mục món (Category) kèm số sản phẩm.
@@ -29,6 +30,7 @@ class Product {
     required this.isAvailable,
     this.size,
     this.description,
+    this.imageUrl,
   });
 
   final int id;
@@ -39,6 +41,7 @@ class Product {
   final bool isAvailable;
   final String? size;
   final String? description;
+  final String? imageUrl;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final cat = json['category'];
@@ -51,7 +54,18 @@ class Product {
       isAvailable: json['isAvailable'] as bool? ?? true,
       size: json['size'] as String?,
       description: json['description'] as String?,
+      imageUrl: json['imageUrl'] as String?,
     );
+  }
+
+  /// Trả về đường dẫn ảnh đầy đủ (tự động ghép với base URL của server nếu là đường dẫn tương đối)
+  String? get fullImageUrl {
+    if (imageUrl == null || imageUrl!.isEmpty) return null;
+    if (imageUrl!.startsWith('http://') || imageUrl!.startsWith('https://')) {
+      return imageUrl;
+    }
+    final base = Env.apiBaseUrl.replaceAll('/api', '');
+    return '$base$imageUrl';
   }
 
   /// Dòng phụ dưới tên: "45,000₫ · S/M/L" hoặc "45,000₫ · out of stock".
