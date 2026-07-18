@@ -87,11 +87,17 @@ export class PaymentsService {
 
     const amount = subtotal - totalDiscount; // BR-02
 
-    // ----- CASH: kiểm tra tiền khách đưa + tính thối -----
+    // ----- CASH: kiểm tra tiền khách đưa + tính thối (BR-02) -----
     let change = 0;
-    if (dto.method === 'CASH' && dto.cashTendered !== undefined) {
+    if (dto.method === 'CASH') {
+      // cashTendered bắt buộc với CASH — chặn thanh toán thiếu tiền.
+      if (dto.cashTendered === undefined || dto.cashTendered === null) {
+        throw new BadRequestException('Cash tendered amount is required for CASH payments.');
+      }
       if (dto.cashTendered < amount) {
-        throw new BadRequestException('Cash tendered is less than amount due.');
+        throw new BadRequestException(
+          `Cash tendered (${dto.cashTendered}₫) is less than amount due (${amount}₫).`
+        );
       }
       change = dto.cashTendered - amount;
     }
