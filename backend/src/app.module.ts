@@ -13,11 +13,18 @@ import { TablesModule } from './tables/tables.module';
 import { ReportsModule } from './reports/reports.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AuditLogModule } from './audit-log/audit-log.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 300,  // limit each IP to 300 requests per minute globally
+    }]),
     PrismaModule,
+    AuditLogModule,
     AuthModule,
     UsersModule,
     MenuModule,
@@ -29,6 +36,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     ReportsModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     // CR-06: mặc định mọi route yêu cầu đăng nhập (dùng @Public() để mở).
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     // CR-07: kiểm tra role theo @Roles().

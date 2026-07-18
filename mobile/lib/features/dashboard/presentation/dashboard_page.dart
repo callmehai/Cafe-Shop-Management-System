@@ -91,6 +91,11 @@ class _StatsSection extends ConsumerWidget {
                 label: 'Tables free',
                 icon: Icons.grid_view_rounded,
                 sage: true,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const TablesManagementPage()),
+                  );
+                },
               ),
             ),
           ],

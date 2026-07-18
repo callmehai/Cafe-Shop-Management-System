@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/page_header.dart';
+import '../../auth/application/auth_controller.dart';
+import '../../auth/domain/app_user.dart';
 import '../data/tables_repository.dart';
 import '../domain/table_model.dart';
 import 'table_form_page.dart';
@@ -15,17 +17,21 @@ class TablesManagementPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tables = ref.watch(tablesProvider);
+    final user = ref.watch(currentUserProvider);
+    final canEdit = user?.role == UserRole.manager || user?.role == UserRole.administrator;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'tables-fab',
-        backgroundColor: AppColors.terracotta,
-        foregroundColor: Colors.white,
-        onPressed: () => _openForm(context),
-        icon: const Icon(Icons.add),
-        label: const Text('Add table'),
-      ),
+      floatingActionButton: canEdit
+          ? FloatingActionButton.extended(
+              heroTag: 'tables-fab',
+              backgroundColor: AppColors.terracotta,
+              foregroundColor: Colors.white,
+              onPressed: () => _openForm(context),
+              icon: const Icon(Icons.add),
+              label: const Text('Add table'),
+            )
+          : null,
       body: SafeArea(
         bottom: false,
         child: tables.when(
@@ -77,7 +83,10 @@ class TablesManagementPage extends ConsumerWidget {
                         crossAxisSpacing: 12,
                         childAspectRatio: 1.5,
                         children: entry.value
-                            .map((t) => _TableCard(table: t, onTap: () => _openForm(context, table: t)))
+                            .map((t) => _TableCard(
+                                  table: t,
+                                  onTap: () => _openForm(context, table: t),
+                                ))
                             .toList(),
                       ),
                     ),

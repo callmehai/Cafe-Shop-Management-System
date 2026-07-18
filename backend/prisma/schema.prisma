@@ -203,3 +203,14 @@ model ProductIngredient {
 
   @@id([productId, ingredientId])
 }
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  username  String?
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
+

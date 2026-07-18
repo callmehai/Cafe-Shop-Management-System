@@ -37,10 +37,10 @@ final customersRepositoryProvider = Provider<CustomersRepository>(
   (ref) => CustomersRepository(ref.watch(apiClientProvider)),
 );
 
-final customersProvider = FutureProvider<List<Customer>>(
+final customersProvider = FutureProvider.autoDispose<List<Customer>>(
   (ref) => ref.watch(customersRepositoryProvider).list(),
 );
 
-final customerDetailProvider = FutureProvider.family<CustomerDetail, int>(
+final customerDetailProvider = FutureProvider.autoDispose.family<CustomerDetail, int>(
   (ref, id) => ref.watch(customersRepositoryProvider).detail(id),
 );

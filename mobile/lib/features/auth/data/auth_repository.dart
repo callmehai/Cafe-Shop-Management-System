@@ -52,8 +52,14 @@ class AuthRepository {
   }
 
   Future<void> logout() async {
-    await _storage.delete(key: AppConstants.tokenKey);
-    await _storage.delete(key: AppConstants.userKey);
+    try {
+      await _api.dio.post('/auth/logout');
+    } catch (e) {
+      // Bỏ qua lỗi mạng để đảm bảo vẫn đăng xuất được trên local.
+    } finally {
+      await _storage.delete(key: AppConstants.tokenKey);
+      await _storage.delete(key: AppConstants.userKey);
+    }
   }
 
   /// Xác thực 1 tài khoản (vd Manager duyệt giảm giá BR-06) mà KHÔNG đụng phiên hiện tại.

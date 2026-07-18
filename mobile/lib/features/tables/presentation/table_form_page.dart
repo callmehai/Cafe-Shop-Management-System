@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/application/auth_controller.dart';
+import '../../auth/domain/app_user.dart';
 import '../data/tables_repository.dart';
 import '../domain/table_model.dart';
 
@@ -113,12 +115,15 @@ class _TableFormPageState extends ConsumerState<TableFormPage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final canManageAll = user?.role == UserRole.manager || user?.role == UserRole.administrator;
+
     return Scaffold(
       backgroundColor: AppColors.cream,
       appBar: AppBar(
         backgroundColor: AppColors.cream,
         surfaceTintColor: Colors.transparent,
-        title: Text(_isEdit ? 'Edit Table' : 'Add Table'),
+        title: Text(_isEdit ? (canManageAll ? 'Edit Table' : 'Change Table Status') : 'Add Table'),
       ),
       body: Form(
         key: _formKey,
@@ -128,6 +133,7 @@ class _TableFormPageState extends ConsumerState<TableFormPage> {
             const _Label('Table number'),
             TextFormField(
               controller: _number,
+              enabled: canManageAll,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(hintText: '5'),
@@ -142,12 +148,13 @@ class _TableFormPageState extends ConsumerState<TableFormPage> {
             _ChipRow(
               options: _zoneOptions,
               selected: {_zone},
-              onTap: (z) => setState(() => _zone = z),
+              onTap: canManageAll ? (z) => setState(() => _zone = z) : (_) {},
             ),
             const SizedBox(height: 16),
             const _Label('Capacity'),
             TextFormField(
               controller: _capacity,
+              enabled: canManageAll,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               decoration: const InputDecoration(hintText: '4', suffixText: 'seats'),
@@ -162,7 +169,7 @@ class _TableFormPageState extends ConsumerState<TableFormPage> {
             _ChipRow(
               options: _shapes,
               selected: _shape == null ? {} : {_shape!},
-              onTap: (s) => setState(() => _shape = s),
+              onTap: canManageAll ? (s) => setState(() => _shape = s) : (_) {},
             ),
             if (_isEdit) ...[
               const SizedBox(height: 16),
@@ -187,7 +194,7 @@ class _TableFormPageState extends ConsumerState<TableFormPage> {
                       width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
                   : const Text('Save table'),
             ),
-            if (_isEdit) ...[
+            if (_isEdit && canManageAll) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _remove,

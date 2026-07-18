@@ -14,6 +14,11 @@ import '../../menu/presentation/menu_management_page.dart';
 import '../../order/presentation/order_queue_page.dart';
 import '../../report/presentation/reports_page.dart';
 import '../../users/presentation/users_management_page.dart';
+import '../../report/data/reports_repository.dart';
+import '../../order/data/orders_repository.dart';
+import '../../tables/data/tables_repository.dart';
+import '../../customer/data/customers_repository.dart';
+import '../../inventory/data/inventory_repository.dart';
 
 /// 1 tab ở bottom navigation.
 class _NavTab {
@@ -78,7 +83,14 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ),
         bottomNavigationBar: NavigationBar(
           selectedIndex: index,
-          onDestinationSelected: (i) => ref.read(homeShellIndexProvider.notifier).state = i,
+          onDestinationSelected: (i) {
+            ref.read(homeShellIndexProvider.notifier).state = i;
+            ref.invalidate(dashboardStatsProvider);
+            ref.invalidate(orderQueueProvider);
+            ref.invalidate(tablesProvider);
+            ref.invalidate(customersProvider);
+            ref.invalidate(ingredientsProvider);
+          },
           backgroundColor: AppColors.surface,
           surfaceTintColor: Colors.transparent,
           destinations: tabs

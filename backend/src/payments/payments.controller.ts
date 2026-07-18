@@ -30,9 +30,9 @@ export class PaymentsController {
   @Public()
   @Header('Content-Type', 'text/html')
   @Get('vnpay-return')
-  vnPayReturn(@Query() query: any) {
-    const responseCode = query['vnp_ResponseCode'];
-    const isSuccess = responseCode === '00';
+  async vnPayReturn(@Query() query: any) {
+    const ipnResult = await this.payments.handleVnPayIpn(query);
+    const isSuccess = query['vnp_ResponseCode'] === '00' && (ipnResult.RspCode === '00' || ipnResult.RspCode === '02');
     const orderNo = query['vnp_TxnRef'] || '';
     return `
       <html>

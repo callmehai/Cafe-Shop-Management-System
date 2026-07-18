@@ -146,20 +146,33 @@ class _TicketCard extends ConsumerWidget {
             const SizedBox(height: 12),
             // Mỗi món: tap để đẩy prep status (UC12).
             ...order.items.map((it) => InkWell(
-                  onTap: () => _advance(ref, context, it.id, it.prepStatus.next),
+                  onTap: order.status == OrderStatus.open
+                      ? () => _advance(ref, context, it.id, it.prepStatus.next)
+                      : null,
                   borderRadius: BorderRadius.circular(8),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            '${it.quantity}× ${it.productName}${it.options != null ? ' · ${it.options}' : ''}',
-                            style: const TextStyle(fontSize: 13),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${it.quantity}× ${it.productName}',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              if (it.options != null && it.options!.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  it.options!,
+                                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
+                        const SizedBox(width: 8),
                         _PrepChip(status: it.prepStatus),
                       ],
                     ),
@@ -169,12 +182,12 @@ class _TicketCard extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: allDone ? null : () => _markDone(ref, context),
+                onPressed: (allDone || order.status != OrderStatus.open) ? null : () => _markDone(ref, context),
                 icon: const Icon(Icons.check_circle_outline, size: 18),
                 label: Text(allDone ? 'All items done' : 'Mark order completed'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.sageText,
-                  side: BorderSide(color: allDone ? AppColors.border : AppColors.sageText),
+                  side: BorderSide(color: (allDone || order.status != OrderStatus.open) ? AppColors.border : AppColors.sageText),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -198,9 +211,16 @@ class _PrepChip extends StatelessWidget {
       PrepStatus.done => AppColors.sageText,
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
-      child: Text(status.label, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 11)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 1),
+      ),
+      child: Text(
+        status.label,
+        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13),
+      ),
     );
   }
 }

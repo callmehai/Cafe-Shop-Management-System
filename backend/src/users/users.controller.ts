@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
+import { AuditAction } from '../audit-log/audit.decorator';
 
 // §4 ma trận: User Management chỉ Administrator.
 @Roles(Role.ADMINISTRATOR)
@@ -17,16 +18,19 @@ export class UsersController {
   }
 
   @Post()
+  @AuditAction('CREATE_USER')
   create(@Body() dto: CreateUserDto) {
     return this.users.create(dto);
   }
 
   @Patch(':id')
+  @AuditAction('UPDATE_USER')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateUserDto) {
     return this.users.update(id, dto);
   }
 
   @Delete(':id')
+  @AuditAction('DELETE_USER')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.users.remove(id);
   }

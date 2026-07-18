@@ -34,9 +34,13 @@ flutter pub get
 flutter run                   # nhớ trỏ API_BASE_URL về backend (xem lib/core/config/env.dart)
 ```
 
-## Trạng thái scaffold
-- ✅ Data model đầy đủ (Prisma) — 12 entity SRS + `ProductIngredient` (recipe/BOM) để chạy auto-deduction BR-08.
-- ✅ Auth + RBAC (JWT, guard theo role) — module mẫu hoàn chỉnh.
-- ✅ Users module — CRUD đầy đủ kèm check trùng username (CR-04) làm tham chiếu.
-- 🟡 Các module còn lại (orders, payments, inventory, customers, tables, reports): skeleton + TODO trỏ business rule, cần implement.
-- ✅ Mobile: cấu trúc feature-first + core (theme/router/api client) + feature auth mẫu; các feature khác là placeholder page.
+## Trạng thái dự án (Release 1.0)
+- ✅ **Data model đầy đủ (Prisma)**: 12 entity SRS + `ProductIngredient` (recipe) cho BR-08 + bảng `AuditLog` cho CR-11.
+- ✅ **Auth & Security**: Đăng nhập, phân quyền RBAC (JWT, `@Roles()`), khóa tài khoản sau 5 lần sai (BR-10), và rate-limiting chống brute-force.
+- ✅ **Audit Log (CR-11)**: Ghi log đăng nhập, đăng xuất, thanh toán, và các thao tác Admin/Manager CRUD.
+- ✅ **Quản lý POS & Bàn**: Đặt hàng (Dine-in/Takeaway), cập nhật trạng thái chế biến (PrepStatus), quản lý sơ đồ bàn.
+- ✅ **Thanh toán & Loyalty (BR-11)**: Hỗ trợ tiền mặt, thẻ, và ví điện tử (tích hợp VNPay sandbox). Tích/đổi điểm loyalty theo quy ước (1 pt = 100đ, earn 1 pt/10.000đ).
+- ✅ **Kho & Inventory (BR-08)**: Tự động trừ kho nguyên liệu theo công thức món ăn khi thanh toán. Goods Receipt (Stock-In) & Low-stock alert.
+- ✅ **Khách hàng & Báo cáo**: CRUD khách hàng, báo cáo doanh thu theo khoảng ngày & export báo cáo.
+- ✅ **Dọn dẹp & Testing**: Đã dọn toàn bộ trang placeholder thừa, viết đầy đủ unit tests cho backend (Jest - 13 tests) và mobile widget/unit tests (Flutter - 7 tests).
+

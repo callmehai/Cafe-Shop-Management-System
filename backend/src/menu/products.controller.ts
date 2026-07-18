@@ -5,6 +5,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuditAction } from '../audit-log/audit.decorator';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 
@@ -49,18 +50,21 @@ export class ProductsController {
   // Ghi: chỉ Manager/Admin (BR-05).
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Post()
+  @AuditAction('CREATE_PRODUCT')
   create(@Body() dto: CreateProductDto) {
     return this.menu.createProduct(dto);
   }
 
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Patch(':id')
+  @AuditAction('UPDATE_PRODUCT')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateProductDto) {
     return this.menu.updateProduct(id, dto);
   }
 
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Delete(':id')
+  @AuditAction('DELETE_PRODUCT')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.menu.deleteProduct(id);
   }
