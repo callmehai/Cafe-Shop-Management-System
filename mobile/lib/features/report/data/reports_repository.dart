@@ -50,12 +50,12 @@ final reportsRepositoryProvider = Provider<ReportsRepository>(
 );
 
 /// Số liệu dashboard (home theo role).
-final dashboardStatsProvider = FutureProvider<DashboardStats>(
+final dashboardStatsProvider = FutureProvider.autoDispose<DashboardStats>(
   (ref) => ref.watch(reportsRepositoryProvider).dashboard(),
 );
 
 /// Báo cáo doanh thu theo preset khoảng ngày: 'today' | '7d' | '30d'.
-final salesReportProvider = FutureProvider.family<SalesReport, String>((ref, range) {
+final salesReportProvider = FutureProvider.autoDispose.family<SalesReport, String>((ref, range) {
   final now = DateTime.now();
   late DateTime from;
   switch (range) {

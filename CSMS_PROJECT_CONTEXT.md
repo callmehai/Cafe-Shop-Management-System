@@ -191,22 +191,28 @@ Quan hệ chính: `User` tạo `Order` → gồm nhiều `OrderItem` (ref `Produ
   /docs          # SRS, API contract (OpenAPI), ERD
 ```
 
-### MVP → Full (đề xuất theo phase)
-- **Phase 1 (core POS):** Auth + RBAC · Menu (Product/Category read) · Create/Update/Cancel Order · Payment (Cash) · in hóa đơn.
-- **Phase 2:** Order Queue + prep status · Customer + Loyalty · Payment điện tử (gateway).
-- **Phase 3:** Inventory (Ingredient, Purchase Order, Stock-In, auto-deduction) · Low-stock alert.
-- **Phase 4:** Reporting + export · Daily aggregation · Audit log + table management.
+### MVP → Full (Đã hoàn thành toàn bộ)
+- **Phase 1 (core POS):** ✅ Hoàn thành (Auth, RBAC, Menu CRUD, Đặt/Hủy đơn, Thanh toán tiền mặt, In hóa đơn Mock).
+- **Phase 2:** ✅ Hoàn thành (Báo chế biến Order Queue, Quản lý khách hàng, Loyalty tích điểm, Thanh toán VNPay).
+- **Phase 3:** ✅ Hoàn thành (Quản lý kho Ingredient, Purchase Order, Stock-In Goods Receipt, Auto-deduction nguyên liệu, Low-stock alert).
+- **Phase 4:** ✅ Hoàn thành (Báo cáo doanh thu & Export, Audit Log hệ thống cho Login/Logout/Payment/Admin actions, Quản lý bàn).
 
 ---
 
-## 12. Câu hỏi mở / cần xác nhận trước khi code
+## 12. Câu hỏi mở / Câu trả lời thực tế (Đã chốt & đóng)
 
-1. **Backend stack** chốt là gì? (Spring Boot / NestJS / .NET / khác) — ảnh hưởng scaffolding.
-2. **Tỷ lệ quy đổi loyalty** — mockup gợi ý 500 pts = 50.000đ (1 pt = 100đ) và tích +20 pts/đơn. Cần chốt công thức earn & redeem (BR-11).
-3. **Payment Gateway cụ thể** (VNPay / MoMo / ZaloPay / mock) — quyết định API contract.
-4. **Kiến trúc dữ liệu order khi offline** — quán dùng Wi-Fi; có cần offline-first/sync không?
-5. **Quan hệ Product ↔ Ingredient** (recipe/BOM) — SRS nói trừ kho theo "products that use it" nhưng chưa có entity recipe. Cần bảng mapping Product–Ingredient để BR-08 chạy được.
-6. **"Sales agent" vs "Barista"** — SRS dùng lẫn lộn; thống nhất 1 tên role trong code.
+1. **Backend stack** chốt là gì?
+   - *Trả lời:* Đã chốt sử dụng **NestJS (Node/TypeScript)** kết hợp **Prisma ORM** và **PostgreSQL** chạy qua Docker.
+2. **Tỷ lệ quy đổi loyalty**
+   - *Trả lời:* Đã chốt quy ước **1 điểm = 100₫** khi quy đổi giảm giá thanh toán; và tích lũy **cộng 1 điểm cho mỗi 10.000₫ thực trả** khi thanh toán thành công (BR-11).
+3. **Payment Gateway cụ thể**
+   - *Trả lời:* Chọn tích hợp **VNPay Gateway (Sandbox)** cho cổng thanh toán điện tử E-Wallet, trả kết quả qua IPN và Return URL. Các phương thức CARD/CASH được mock trực tiếp.
+4. **Kiến trúc dữ liệu order khi offline**
+   - *Trả lời:* Đã chốt vận hành Online-first qua kết nối Wi-Fi/Internet ổn định tại quán; trường hợp mất mạng sẽ báo lỗi DioException và yêu cầu kết nối lại để đảm bảo đồng bộ tồn kho thời gian thực.
+5. **Quan hệ Product ↔ Ingredient** (recipe/BOM)
+   - *Trả lời:* Đã thêm bảng trung gian `ProductIngredient` (định nghĩa công thức chế biến của mỗi món) để liên kết Product and Ingredient, từ đó hệ thống tự động trừ kho nguyên liệu khi thanh toán (BR-08).
+6. **"Sales agent" vs "Barista"**
+   - *Trả lời:* Thống nhất tên role trong code và phân quyền là **BARISTA** (pha chế món và chuẩn bị đơn hàng).
 
 ---
 

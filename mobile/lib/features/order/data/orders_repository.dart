@@ -63,11 +63,11 @@ final ordersRepositoryProvider = Provider<OrdersRepository>(
 );
 
 /// Hàng đợi order đang OPEN (màn 11).
-final orderQueueProvider = FutureProvider<List<Order>>(
+final orderQueueProvider = FutureProvider.autoDispose<List<Order>>(
   (ref) => ref.watch(ordersRepositoryProvider).queue(),
 );
 
 /// Chi tiết 1 order (màn 10).
-final orderDetailProvider = FutureProvider.family<Order, int>(
+final orderDetailProvider = FutureProvider.autoDispose.family<Order, int>(
   (ref, id) => ref.watch(ordersRepositoryProvider).getOrder(id),
 );

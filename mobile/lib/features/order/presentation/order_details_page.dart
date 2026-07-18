@@ -8,6 +8,8 @@ import '../../../core/utils/toast.dart';
 import '../../menu/data/menu_repository.dart';
 import '../../menu/domain/menu_models.dart';
 import '../../tables/data/tables_repository.dart';
+import '../../auth/application/auth_controller.dart';
+import '../../auth/domain/app_user.dart';
 import '../../payment/presentation/payment_page.dart';
 import '../data/orders_repository.dart';
 import '../domain/order_models.dart';
@@ -51,7 +53,11 @@ class _OrderDetailsPageState extends ConsumerState<OrderDetailsPage> {
   }
 
   double get _subtotal => (_lines ?? []).fold(0, (s, l) => s + l.lineTotal);
-  bool get _editable => _status == OrderStatus.open;
+  bool get _editable {
+    if (_status != OrderStatus.open) return false;
+    final user = ref.watch(currentUserProvider);
+    return user?.role != UserRole.barista;
+  }
 
   Future<void> _save() async {
     final lines = _lines ?? [];

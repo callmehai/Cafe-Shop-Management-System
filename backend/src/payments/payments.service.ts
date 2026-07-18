@@ -9,6 +9,7 @@ import { Customer, LoyaltyType, OccupancyStatus, OrderStatus, Role } from '@pris
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 function sortObject(obj: any) {
   const sorted: any = {};
@@ -36,7 +37,10 @@ const EARN_PER = 10000;
 
 @Injectable()
 export class PaymentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private auditService: AuditLogService,
+  ) {}
 
   // UC10 Process Payment — atomic.
   async process(dto: CreatePaymentDto, cashierId: number) {
@@ -170,6 +174,18 @@ export class PaymentsService {
       return { payment, lowStock, pointsEarned, newBalance };
     });
 
+    await this.auditService.log({
+      userId: cashierId,
+      action: 'PROCESS_PAYMENT',
+      details: JSON.stringify({
+        orderId: dto.orderId,
+        method: dto.method,
+        amount,
+        pointsRedeemed,
+        pointsEarned: result.pointsEarned,
+      }),
+    });
+
     return {
       payment: result.payment,
       orderNo: `ORD-${1000 + order.id}`,
@@ -213,12 +229,6 @@ export class PaymentsService {
     const vnpUrl = process.env.VNP_URL;
     const returnUrl = process.env.VNP_RETURN_URL;
 
-    console.log('--- DEBUG VNPAY CONFIG ---');
-    console.log('process.env.VNP_TMN_CODE:', JSON.stringify(tmnCode));
-    console.log('process.env.VNP_HASH_SECRET:', JSON.stringify(secretKey));
-    console.log('process.env.VNP_URL:', JSON.stringify(vnpUrl));
-    console.log('process.env.VNP_RETURN_URL:', JSON.stringify(returnUrl));
-    console.log('---------------------------');
 
     const date = new Date();
     const createDate = formatVnPayDate(date);
@@ -231,7 +241,7 @@ export class PaymentsService {
     vnpParams['vnp_TmnCode'] = tmnCode;
     vnpParams['vnp_Locale'] = 'vn';
     vnpParams['vnp_CurrCode'] = 'VND';
-    vnpParams['vnp_TxnRef'] = `ORD-${1000 + order.id}`;
+    vnpParams['vnp_TxnRef'] = `ORD-${1000 + order.id}-${Date.now()}`;
     vnpParams['vnp_OrderInfo'] = `Thanh toan don hang ORD-${1000 + order.id}`;
     vnpParams['vnp_OrderType'] = 'other';
     vnpParams['vnp_Amount'] = amount.toString();
@@ -248,7 +258,6 @@ export class PaymentsService {
     const signed = hmac.update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     const finalUrl = `${vnpUrl}?${signData}&vnp_SecureHash=${signed}`;
-    console.log('Generated VNPay URL:', finalUrl);
     return finalUrl;
   }
 
@@ -276,7 +285,7 @@ export class PaymentsService {
     }
 
     const txnRef = query['vnp_TxnRef'] as string;
-    const orderNoIdStr = txnRef.replace('ORD-', '');
+    const orderNoIdStr = txnRef.replace('ORD-', '').split('-')[0];
     const orderId = parseInt(orderNoIdStr, 10) - 1000;
 
     const order = await this.prisma.order.findUnique({
@@ -385,9 +394,32 @@ export class PaymentsService {
         }
       });
 
+      await this.auditService.log({
+        userId: order.createdById,
+        action: 'VNPAY_PAYMENT',
+        details: JSON.stringify({
+          orderId: order.id,
+          txnRef,
+          amount: amountValue,
+          status: 'SUCCESS',
+        }),
+        ipAddress: query['vnp_IpAddr'],
+      });
+
       return { RspCode: '00', Message: 'Confirm success' };
     } else {
-      return { RspCode: '00', Message: 'Confirm success' };
+      // Thanh toán thất bại/bị hủy — ghi log nhưng không cập nhật order.
+      await this.auditService.log({
+        userId: order.createdById,
+        action: 'VNPAY_PAYMENT_FAILED',
+        details: JSON.stringify({
+          orderId: order.id,
+          txnRef,
+          responseCode,
+        }),
+        ipAddress: query['vnp_IpAddr'],
+      });
+      return { RspCode: '00', Message: 'Confirm received' };
     }
   }
 }

@@ -61,11 +61,11 @@ final menuRepositoryProvider = Provider<MenuRepository>(
 );
 
 /// Danh sách sản phẩm (toàn bộ — UI tự nhóm theo category & lọc client-side).
-final productsProvider = FutureProvider<List<Product>>(
+final productsProvider = FutureProvider.autoDispose<List<Product>>(
   (ref) => ref.watch(menuRepositoryProvider).listProducts(),
 );
 
 /// Danh sách category kèm số sản phẩm.
-final categoriesProvider = FutureProvider<List<Category>>(
+final categoriesProvider = FutureProvider.autoDispose<List<Category>>(
   (ref) => ref.watch(menuRepositoryProvider).listCategories(),
 );

@@ -30,6 +30,6 @@ final tablesRepositoryProvider = Provider<TablesRepository>(
   (ref) => TablesRepository(ref.watch(apiClientProvider)),
 );
 
-final tablesProvider = FutureProvider<List<TableModel>>(
+final tablesProvider = FutureProvider.autoDispose<List<TableModel>>(
   (ref) => ref.watch(tablesRepositoryProvider).list(),
 );

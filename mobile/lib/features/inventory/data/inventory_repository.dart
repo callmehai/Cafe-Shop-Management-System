@@ -35,6 +35,6 @@ final inventoryRepositoryProvider = Provider<InventoryRepository>(
   (ref) => InventoryRepository(ref.watch(apiClientProvider)),
 );
 
-final ingredientsProvider = FutureProvider<List<Ingredient>>(
+final ingredientsProvider = FutureProvider.autoDispose<List<Ingredient>>(
   (ref) => ref.watch(inventoryRepositoryProvider).listIngredients(),
 );

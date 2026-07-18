@@ -12,19 +12,20 @@ csms/
 │       ├── common/            # RBAC: roles, guards, decorators (CR-06/07)
 │       ├── auth/      ✅ đầy đủ (JWT login, UC10)
 │       ├── users/     ✅ CRUD mẫu (CR-04 chống trùng username)
-│       ├── menu/      🟡 read xong; CRUD product/category TODO (BR-05)
-│       ├── orders/    🟡 skeleton (UC06-12)
-│       ├── payments/  🟡 skeleton (UC10 + BR-02/03/06/08/11)
-│       ├── inventory/ 🟡 skeleton (UC15-16, low-stock)
-│       ├── customers/ 🟡 skeleton (UC19 + loyalty)
-│       ├── tables/    🟡 skeleton
-│       └── reports/   🟡 skeleton (UC20-21)
+│       ├── menu/      ✅ đầy đủ CRUD product/category & upload ảnh (BR-05)
+│       ├── orders/    ✅ đầy đủ tạo/sửa/hủy order & phân bàn (UC06-12)
+│       ├── payments/  ✅ đầy đủ cash/card/vnpay + trừ kho + loyalty (BR-02/03/06/08/11)
+│       ├── inventory/ ✅ đầy đủ quản lý kho, stock-in & PO (UC15-16, low-stock)
+│       ├── customers/ ✅ đầy đủ quản lý khách hàng + loyalty
+│       ├── tables/    ✅ đầy đủ quản lý danh mục bàn & trạng thái bàn
+│       ├── reports/   ✅ đầy đủ tổng hợp doanh thu & xuất báo cáo (UC20-21)
+│       └── audit-log/ ✅ đầy đủ ghi nhận log hệ thống (CR-11)
 └── mobile/                  # Flutter (Android/iOS)
     ├── pubspec.yaml  analysis_options.yaml
     └── lib/
         ├── main.dart  app.dart
         ├── core/      ✅ config, network(Dio+JWT), router, theme(màu mockup)
         └── features/
-            ├── auth/      ✅ repository + login page mẫu
-            ├── dashboard/ 🟡 placeholder
-            └── order, payment, menu, inventory, customer, report  🟡 placeholder
+            ├── auth/      ✅ repository + login page hoàn chỉnh
+            ├── dashboard/ ✅ dashboard hiển thị số liệu & phím tắt hoàn chỉnh
+            └── order, payment, menu, inventory, customer, report  ✅ các màn hình & logic nghiệp vụ đầy đủ

@@ -88,10 +88,12 @@ export class OrdersService {
             data: { occupancyStatus: OccupancyStatus.FREE },
           });
         }
-        await tx.table.update({
-          where: { id: dto.tableId },
-          data: { occupancyStatus: OccupancyStatus.OCCUPIED },
-        });
+        if (dto.tableId !== null) {
+          await tx.table.update({
+            where: { id: dto.tableId },
+            data: { occupancyStatus: OccupancyStatus.OCCUPIED },
+          });
+        }
       }
       return tx.order.update({
         where: { id },
@@ -130,6 +132,11 @@ export class OrdersService {
 
   // UC12 Update Item Prep Status (Barista đẩy pending -> making -> done).
   async updateItemPrep(orderId: number, itemId: number, status: PrepStatus) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== OrderStatus.OPEN) {
+      throw new ConflictException('Cannot update preparation status of a paid or cancelled order.');
+    }
     const item = await this.prisma.orderItem.findUnique({ where: { id: itemId } });
     if (!item || item.orderId !== orderId) throw new NotFoundException('Order item not found');
     await this.prisma.orderItem.update({ where: { id: itemId }, data: { prepStatus: status } });
@@ -140,6 +147,9 @@ export class OrdersService {
   async markPrepDone(orderId: number) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== OrderStatus.OPEN) {
+      throw new ConflictException('Cannot update preparation status of a paid or cancelled order.');
+    }
     await this.prisma.orderItem.updateMany({ where: { orderId }, data: { prepStatus: PrepStatus.DONE } });
     return this.findOne(orderId);
   }

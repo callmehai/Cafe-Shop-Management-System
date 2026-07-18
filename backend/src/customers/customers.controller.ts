@@ -3,6 +3,7 @@ import { CustomersService } from './customers.service';
 import { CreateCustomerDto, UpdateCustomerDto } from './dto/customer.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
+import { AuditAction } from '../audit-log/audit.decorator';
 
 @Controller('customers')
 export class CustomersController {
@@ -22,18 +23,21 @@ export class CustomersController {
   // Ghi: Manager/Admin.
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Post()
+  @AuditAction('CREATE_CUSTOMER')
   create(@Body() dto: CreateCustomerDto) {
     return this.customers.create(dto);
   }
 
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Patch(':id')
+  @AuditAction('UPDATE_CUSTOMER')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCustomerDto) {
     return this.customers.update(id, dto);
   }
 
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Delete(':id')
+  @AuditAction('DELETE_CUSTOMER')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.customers.remove(id);
   }
