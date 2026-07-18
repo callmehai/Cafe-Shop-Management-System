@@ -66,7 +66,7 @@ describe('PaymentsService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('should throw ConflictException if discount is > 50% and no manager approval (BR-06)', async () => {
+    it('should throw BadRequestException if CASH payment has no cashTendered (BR-02)', async () => {
       mockPrisma.order.findUnique.mockResolvedValue({
         id: 1,
         status: OrderStatus.OPEN,
@@ -78,6 +78,25 @@ describe('PaymentsService', () => {
           {
             orderId: 1,
             method: PaymentMethod.CASH,
+            // cashTendered intentionally omitted
+          },
+          1,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw ConflictException if discount is > 50% and no manager approval (BR-06)', async () => {
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 1,
+        status: OrderStatus.OPEN,
+        items: [{ id: 1, linePrice: '100000', product: { recipe: [] } }],
+      });
+
+      await expect(
+        service.process(
+          {
+            orderId: 1,
+            method: PaymentMethod.CARD, // CARD: tiền mặt không cần cashTendered
             discount: 60000, // 60% discount
           },
           1,
@@ -112,7 +131,7 @@ describe('PaymentsService', () => {
         service.process(
           {
             orderId: 1,
-            method: PaymentMethod.CASH,
+            method: PaymentMethod.CARD, // CARD: không cần cashTendered
           },
           1,
         ),
