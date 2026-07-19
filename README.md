@@ -34,6 +34,16 @@ flutter pub get
 flutter run                   # nhớ trỏ API_BASE_URL về backend (xem lib/core/config/env.dart)
 ```
 
+## Tài khoản thử nghiệm mặc định (Default Accounts)
+Sau khi chạy seed dữ liệu hoặc cập nhật database, bạn có thể dùng các tài khoản mặc định dưới đây để đăng nhập và kiểm thử theo từng vai trò (role):
+
+| Role (Vai trò) | Username | Password | Tên đầy đủ (Full Name) |
+| :--- | :--- | :--- | :--- |
+| **ADMINISTRATOR** | `admin` | `admin123` | System Admin |
+| **MANAGER** | `manager.an` | `123456` | Tran Van An |
+| **CASHIER** | `cashier.linh` | `123456` | Linh Nguyen |
+| **BARISTA** | `barista.huy` | `123456` | Pham Quang Huy |
+
 ## Trạng thái dự án (Release 1.0)
 - ✅ **Data model đầy đủ (Prisma)**: 12 entity SRS + `ProductIngredient` (recipe) cho BR-08 + bảng `AuditLog` cho CR-11.
 - ✅ **Auth & Security**: Đăng nhập, phân quyền RBAC (JWT, `@Roles()`), khóa tài khoản sau 5 lần sai (BR-10), và rate-limiting chống brute-force.
