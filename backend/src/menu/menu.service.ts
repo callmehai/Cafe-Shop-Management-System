@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProductDto } from './dto/create-product.dto';
+import { CreateProductDto, RecipeLineDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -14,14 +14,25 @@ export class MenuService {
   listProducts(search?: string) {
     return this.prisma.product.findMany({
       where: search ? { name: { contains: search, mode: 'insensitive' } } : undefined,
-      include: { category: true },
+      include: { category: true, recipe: { include: { ingredient: true } } },
       orderBy: [{ categoryId: 'asc' }, { name: 'asc' }],
     });
+  }
+
+  // UC13: xem chi tiết 1 món kèm công thức (BR-08).
+  async getProduct(id: number) {
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { category: true, recipe: { include: { ingredient: true } } },
+    });
+    if (!product) throw new NotFoundException('Product not found');
+    return product;
   }
 
   // UC13 Add Product (BR-05: chỉ Manager/Admin — enforce ở controller).
   async createProduct(dto: CreateProductDto) {
     await this.ensureCategory(dto.categoryId);
+    if (dto.recipe) await this.ensureIngredients(dto.recipe);
     return this.prisma.product.create({
       data: {
         name: dto.name,
@@ -31,19 +42,46 @@ export class MenuService {
         description: dto.description,
         isAvailable: dto.isAvailable ?? true,
         imageUrl: dto.imageUrl,
+        recipe: dto.recipe?.length
+          ? {
+              create: dto.recipe.map((r) => ({
+                ingredientId: r.ingredientId,
+                quantity: r.quantity,
+              })),
+            }
+          : undefined,
       },
-      include: { category: true },
+      include: { category: true, recipe: { include: { ingredient: true } } },
     });
   }
 
-  // UC13 Edit Product (kèm bật/tắt isAvailable — BR-04).
+  // UC13 Edit Product (kèm bật/tắt isAvailable — BR-04, và công thức — BR-08).
   async updateProduct(id: number, dto: UpdateProductDto) {
     await this.ensureProduct(id);
     if (dto.categoryId !== undefined) await this.ensureCategory(dto.categoryId);
-    return this.prisma.product.update({
-      where: { id },
-      data: { ...dto },
-      include: { category: true },
+    // `recipe` không phải cột của Product — tách ra khỏi data để Prisma không lỗi.
+    const { recipe, ...productData } = dto;
+    if (recipe) await this.ensureIngredients(recipe);
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.product.update({ where: { id }, data: { ...productData } });
+      // recipe === undefined -> giữ nguyên; mảng (kể cả rỗng) -> thay thế toàn bộ.
+      if (recipe) {
+        await tx.productIngredient.deleteMany({ where: { productId: id } });
+        if (recipe.length > 0) {
+          await tx.productIngredient.createMany({
+            data: recipe.map((r) => ({
+              productId: id,
+              ingredientId: r.ingredientId,
+              quantity: r.quantity,
+            })),
+          });
+        }
+      }
+      return tx.product.findUnique({
+        where: { id },
+        include: { category: true, recipe: { include: { ingredient: true } } },
+      });
     });
   }
 
@@ -98,5 +136,19 @@ export class MenuService {
     const c = await this.prisma.category.findUnique({ where: { id } });
     if (!c) throw new NotFoundException('Category not found');
     return c;
+  }
+
+  // Công thức: ingredient phải tồn tại & không trùng lặp (khóa chính là [productId, ingredientId]).
+  private async ensureIngredients(recipe: RecipeLineDto[]) {
+    const ids = recipe.map((r) => r.ingredientId);
+    if (new Set(ids).size !== ids.length) {
+      throw new ConflictException('An ingredient can only appear once in a recipe.');
+    }
+    const found = await this.prisma.ingredient.findMany({ where: { id: { in: ids } } });
+    if (found.length !== new Set(ids).size) {
+      const known = new Set(found.map((i) => i.id));
+      const missing = ids.filter((i) => !known.has(i));
+      throw new NotFoundException(`Ingredient not found: ${missing.join(', ')}`);
+    }
   }
 }

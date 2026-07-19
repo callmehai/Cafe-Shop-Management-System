@@ -1,5 +1,28 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+
+// BR-08: 1 dòng công thức = lượng `quantity` ingredient cho 1 đơn vị product.
+export class RecipeLineDto {
+  @Type(() => Number)
+  @IsInt({ message: 'Ingredient is required.' })
+  ingredientId: number;
+
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'Quantity must be a valid number.' })
+  @IsPositive({ message: 'Quantity must be greater than 0.' })
+  quantity: number;
+}
 
 export class CreateProductDto {
   @Transform(({ value }) => value?.trim()) // CR-08
@@ -35,4 +58,11 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  // BR-08: công thức nguyên liệu. Bỏ trống khi update = giữ nguyên công thức cũ.
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RecipeLineDto)
+  recipe?: RecipeLineDto[];
 }

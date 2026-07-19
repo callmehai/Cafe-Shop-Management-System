@@ -21,10 +21,12 @@ const ORDER_INCLUDE = {
 export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
-  // UC06 Create Order — BR-01 (>=1 item, validate ở DTO), BR-04 (product available).
+  // UC06 Create Order — BR-01 (>=1 item, validate ở DTO), BR-04 (product available),
+  // BR-08 (đủ nguyên liệu — chặn ngay tại đây, không để tới bước thanh toán).
   async create(dto: CreateOrderDto, userId: number) {
     const items = await this.buildItems(dto.items);
     if (dto.tableId) await this.ensureTableExists(dto.tableId);
+    await this.ensureStockAvailable(dto.items);
 
     const order = await this.prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -74,6 +76,7 @@ export class OrdersService {
     }
     const items = dto.items ? await this.buildItems(dto.items) : null;
     if (dto.tableId) await this.ensureTableExists(dto.tableId);
+    if (dto.items) await this.ensureStockAvailable(dto.items, id); // BR-08
 
     const order = await this.prisma.$transaction(async (tx) => {
       if (items) {
@@ -176,6 +179,68 @@ export class OrdersService {
   private async ensureTableExists(tableId: number) {
     const t = await this.prisma.table.findUnique({ where: { id: tableId } });
     if (!t) throw new BadRequestException('Table not found.');
+  }
+
+  // BR-08: chặn tạo/sửa order khi kho không đủ nguyên liệu theo công thức.
+  // Tồn kho chỉ thực sự bị trừ lúc thanh toán, nên phải trừ hao phần đã được
+  // "giữ chỗ" bởi các order OPEN khác — nếu không, 2 order đều qua được bước
+  // tạo rồi mới báo thiếu ở màn thanh toán (đúng lỗi đang phải sửa).
+  // `excludeOrderId` bỏ qua chính order đang được sửa.
+  private async ensureStockAvailable(items: CreateOrderItemDto[], excludeOrderId?: number) {
+    // Lượng cần cho order này.
+    const required = await this.sumRecipe(items);
+    if (required.size === 0) return;
+
+    // Lượng đang bị giữ bởi các order OPEN khác.
+    const openItems = await this.prisma.orderItem.findMany({
+      where: {
+        order: {
+          status: OrderStatus.OPEN,
+          ...(excludeOrderId ? { id: { not: excludeOrderId } } : {}),
+        },
+      },
+      select: { productId: true, quantity: true },
+    });
+    const reserved = await this.sumRecipe(openItems);
+
+    const ingredients = await this.prisma.ingredient.findMany({
+      where: { id: { in: [...required.keys()] } },
+    });
+    const byId = new Map(ingredients.map((i) => [i.id, i]));
+
+    for (const [ingredientId, need] of required) {
+      const ing = byId.get(ingredientId);
+      if (!ing) throw new BadRequestException(`Ingredient with ID ${ingredientId} not found.`);
+      const available = Number(ing.quantityOnHand) - (reserved.get(ingredientId) ?? 0);
+      if (available < need) {
+        throw new BadRequestException(
+          `Not enough "${ing.name}" in stock. Available: ${available < 0 ? 0 : available}, Required: ${need}.`,
+        );
+      }
+    }
+  }
+
+  // Gộp lượng nguyên liệu cần cho một danh sách {productId, quantity}.
+  private async sumRecipe(items: { productId: number; quantity: number }[]) {
+    const totals = new Map<number, number>();
+    if (items.length === 0) return totals;
+    const productIds = [...new Set(items.map((i) => i.productId))];
+    const recipes = await this.prisma.productIngredient.findMany({
+      where: { productId: { in: productIds } },
+    });
+    const byProduct = new Map<number, typeof recipes>();
+    for (const r of recipes) {
+      const list = byProduct.get(r.productId) ?? [];
+      list.push(r);
+      byProduct.set(r.productId, list);
+    }
+    for (const item of items) {
+      for (const r of byProduct.get(item.productId) ?? []) {
+        const need = Number(r.quantity) * item.quantity;
+        totals.set(r.ingredientId, (totals.get(r.ingredientId) ?? 0) + need);
+      }
+    }
+    return totals;
   }
 
   // Thêm orderNo + subtotal + itemCount cho client (không lưu DB).
