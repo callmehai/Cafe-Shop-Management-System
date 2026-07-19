@@ -734,8 +734,8 @@ class _VnPayWaitingDialogState extends ConsumerState<_VnPayWaitingDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.surface,
-      title: Row(
-        children: const [
+      title: const Row(
+        children: [
           Icon(Icons.payment, color: AppColors.terracotta),
           SizedBox(width: 8),
           Text('VNPay Sandbox'),

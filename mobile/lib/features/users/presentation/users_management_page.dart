@@ -223,7 +223,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             ),
             const SizedBox(height: 14),
             DropdownButtonFormField<UserRole>(
-              value: _role,
+              initialValue: _role,
               decoration: const InputDecoration(labelText: 'Role'),
               items: _roles.map((r) => DropdownMenuItem(value: r, child: Text(r.label))).toList(),
               onChanged: (v) => setState(() => _role = v ?? _role),
@@ -238,7 +238,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               child: SwitchListTile(
                 value: _active,
                 onChanged: (v) => setState(() => _active = v),
-                activeColor: AppColors.terracotta,
+                activeThumbColor: AppColors.terracotta,
                 title: const Text('Active', style: TextStyle(fontWeight: FontWeight.w600)),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
               ),

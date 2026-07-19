@@ -241,9 +241,9 @@ class _ReceiptPreviewDialog extends ConsumerWidget {
                             const SizedBox(height: 8),
                             _dashedLine(),
                             const SizedBox(height: 8),
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: const [
+                              children: [
                                 Expanded(child: Text('ITEM', style: TextStyle(fontWeight: FontWeight.bold))),
                                 SizedBox(width: 44, child: Text('QTY', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),
                                 SizedBox(width: 70, child: Text('PRICE', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold))),

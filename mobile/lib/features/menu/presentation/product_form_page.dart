@@ -166,12 +166,12 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                           fit: BoxFit.cover,
                         )
                       else
-                        Column(
+                        const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.terracotta),
-                            const SizedBox(height: 8),
-                            const Text(
+                            Icon(Icons.add_a_photo_outlined, size: 36, color: AppColors.terracotta),
+                            SizedBox(height: 8),
+                            Text(
                               'Tap to select image',
                               style: TextStyle(
                                 fontSize: 13,
@@ -222,7 +222,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
               loading: () => const LinearProgressIndicator(),
               error: (e, _) => Text(apiErrorMessage(e), style: const TextStyle(color: AppColors.danger)),
               data: (list) => DropdownButtonFormField<int>(
-                value: _categoryId,
+                initialValue: _categoryId,
                 decoration: const InputDecoration(hintText: 'Choose category'),
                 items: list
                     .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
@@ -303,7 +303,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
               child: SwitchListTile(
                 value: _available,
                 onChanged: (v) => setState(() => _available = v),
-                activeColor: AppColors.terracotta,
+                activeThumbColor: AppColors.terracotta,
                 title: const Text('Available', style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: const Text('Show on order menu'),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16),
@@ -539,7 +539,7 @@ class _RecipeLineDialogState extends State<_RecipeLineDialog> {
                 style: const TextStyle(fontWeight: FontWeight.w600))
           else
             DropdownButtonFormField<int>(
-              value: _ingredientId,
+              initialValue: _ingredientId,
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Ingredient'),
               items: widget.ingredients!
