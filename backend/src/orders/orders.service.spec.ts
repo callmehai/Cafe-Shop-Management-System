@@ -145,6 +145,40 @@ describe('OrdersService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    // 0.41 * 2 = 0.8200000000000001 trong float -> không được chặn nhầm khi kho có đúng 0.82.
+    it('should not block an order due to float rounding error', async () => {
+      mockPrisma.productIngredient.findMany.mockResolvedValue([
+        { productId: 101, ingredientId: 9, quantity: '0.41' },
+      ]);
+      mockPrisma.ingredient.findMany.mockResolvedValue([
+        { id: 9, name: 'Matcha Powder', quantityOnHand: '0.82' },
+      ]);
+      mockPrisma.order.create.mockResolvedValue({ id: 1 });
+      mockPrisma.order.findUnique.mockResolvedValue({
+        id: 1,
+        status: OrderStatus.OPEN,
+        items: [{ id: 1, productId: 101, quantity: 2, linePrice: '120000' }],
+      });
+
+      await expect(
+        service.create({ items: [{ productId: 101, quantity: 2 }] }, 1),
+      ).resolves.toMatchObject({ orderNo: 'ORD-1001' });
+    });
+
+    it('should report rounded quantities in the error message', async () => {
+      mockPrisma.productIngredient.findMany.mockResolvedValue([
+        { productId: 101, ingredientId: 9, quantity: '0.41' },
+      ]);
+      mockPrisma.ingredient.findMany.mockResolvedValue([
+        { id: 9, name: 'Matcha Powder', quantityOnHand: '0.78' },
+      ]);
+
+      // Không được lộ "0.8200000000000001" ra message cho người dùng.
+      await expect(
+        service.create({ items: [{ productId: 101, quantity: 2 }] }, 1),
+      ).rejects.toThrow('Not enough "Matcha Powder" in stock. Available: 0.78, Required: 0.82.');
+    });
+
     it('should create the order when stock is sufficient', async () => {
       mockPrisma.ingredient.findMany.mockResolvedValue([
         { id: 9, name: 'Coffee Beans', quantityOnHand: '500' },

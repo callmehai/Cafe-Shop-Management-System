@@ -35,6 +35,10 @@ function formatVnPayDate(date: Date): string {
 const POINT_VALUE = 100;
 const EARN_PER = 10000;
 
+// Lượng nguyên liệu lưu Decimal(12,2). Cộng dồn bằng float sinh sai số
+// (0.41 * 2 = 0.8200000000000001), nên chốt về 2 chữ số thập phân.
+const round2 = (n: number) => Number(n.toFixed(2));
+
 @Injectable()
 export class PaymentsService {
   constructor(
@@ -109,7 +113,7 @@ export class PaymentsService {
     for (const item of order.items) {
       for (const r of item.product.recipe) {
         const need = Number(r.quantity) * item.quantity;
-        deductions.set(r.ingredientId, (deductions.get(r.ingredientId) ?? 0) + need);
+        deductions.set(r.ingredientId, round2((deductions.get(r.ingredientId) ?? 0) + need));
       }
     }
 
@@ -139,7 +143,7 @@ export class PaymentsService {
         const ing = await tx.ingredient.findUnique({ where: { id: ingredientId } });
         if (!ing) throw new NotFoundException(`Ingredient with ID ${ingredientId} not found.`);
 
-        const currentStock = Number(ing.quantityOnHand);
+        const currentStock = round2(Number(ing.quantityOnHand));
         if (currentStock < qty) {
           throw new BadRequestException(
             `Ingredient "${ing.name}" is out of stock. Available: ${currentStock}, Required: ${qty}.`
@@ -333,7 +337,7 @@ export class PaymentsService {
       for (const item of order.items) {
         for (const r of item.product.recipe) {
           const need = Number(r.quantity) * item.quantity;
-          deductions.set(r.ingredientId, (deductions.get(r.ingredientId) ?? 0) + need);
+          deductions.set(r.ingredientId, round2((deductions.get(r.ingredientId) ?? 0) + need));
         }
       }
 
@@ -365,7 +369,7 @@ export class PaymentsService {
           const ing = await tx.ingredient.findUnique({ where: { id: ingredientId } });
           if (!ing) throw new NotFoundException(`Ingredient with ID ${ingredientId} not found.`);
 
-          const currentStock = Number(ing.quantityOnHand);
+          const currentStock = round2(Number(ing.quantityOnHand));
           if (currentStock < qty) {
             throw new BadRequestException(
               `Ingredient "${ing.name}" is out of stock. Available: ${currentStock}, Required: ${qty}.`

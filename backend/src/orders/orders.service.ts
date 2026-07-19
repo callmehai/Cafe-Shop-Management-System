@@ -10,6 +10,11 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { CreateOrderItemDto } from './dto/create-order-item.dto';
 
+// Lượng nguyên liệu lưu Decimal(12,2). Cộng dồn bằng float sinh sai số
+// (0.41 * 2 = 0.8200000000000001), nên chốt về 2 chữ số thập phân.
+// Number(x.toFixed(2)) bỏ luôn số 0 thừa: 0.80 -> 0.8.
+const round2 = (n: number) => Number(n.toFixed(2));
+
 const ORDER_INCLUDE = {
   items: { include: { product: true }, orderBy: { id: 'asc' } },
   table: true,
@@ -208,10 +213,14 @@ export class OrdersService {
     });
     const byId = new Map(ingredients.map((i) => [i.id, i]));
 
-    for (const [ingredientId, need] of required) {
+    for (const [ingredientId, rawNeed] of required) {
       const ing = byId.get(ingredientId);
       if (!ing) throw new BadRequestException(`Ingredient with ID ${ingredientId} not found.`);
-      const available = Number(ing.quantityOnHand) - (reserved.get(ingredientId) ?? 0);
+      // Kho lưu Decimal(12,2) nên chốt về 2 chữ số trước khi so sánh — tránh
+      // sai số cộng dồn float (0.41*2 = 0.8200000000000001) làm chặn nhầm
+      // order thực ra vừa đủ nguyên liệu.
+      const need = round2(rawNeed);
+      const available = round2(Number(ing.quantityOnHand) - (reserved.get(ingredientId) ?? 0));
       if (available < need) {
         throw new BadRequestException(
           `Not enough "${ing.name}" in stock. Available: ${available < 0 ? 0 : available}, Required: ${need}.`,
@@ -237,7 +246,7 @@ export class OrdersService {
     for (const item of items) {
       for (const r of byProduct.get(item.productId) ?? []) {
         const need = Number(r.quantity) * item.quantity;
-        totals.set(r.ingredientId, (totals.get(r.ingredientId) ?? 0) + need);
+        totals.set(r.ingredientId, round2((totals.get(r.ingredientId) ?? 0) + need));
       }
     }
     return totals;
