@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:csms_mobile/features/auth/presentation/login_page.dart';
 
 void main() {
-  testWidgets('LoginPage validation test - empty fields error', (WidgetTester tester) async {
+  testWidgets('LoginPage validation test - empty fields show per-field errors', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
         child: MaterialApp(
@@ -21,7 +21,9 @@ void main() {
     await tester.tap(loginButton);
     await tester.pump();
 
-    expect(find.text('Please enter your user name and password.'), findsOneWidget);
+    // After commit #2, validation shows per-field messages instead of a single banner.
+    expect(find.text('Username is required.'), findsOneWidget);
+    expect(find.text('Password is required.'), findsOneWidget);
   });
 
   testWidgets('LoginPage fields input test', (WidgetTester tester) async {
@@ -33,7 +35,8 @@ void main() {
       ),
     );
 
-    final textFields = find.byType(TextField);
+    // Login page now uses TextFormField (subclass of TextField).
+    final textFields = find.byType(TextFormField);
     expect(textFields, findsNWidgets(2));
 
     await tester.enterText(textFields.at(0), 'linh.counter');
