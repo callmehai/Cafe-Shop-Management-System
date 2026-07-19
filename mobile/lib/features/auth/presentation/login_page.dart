@@ -15,6 +15,7 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   final _user = TextEditingController();
   final _pass = TextEditingController();
   bool _obscure = true;
@@ -28,14 +29,39 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+  /// Validate username theo business rules:
+  /// - Không được để trống
+  /// - Không chứa khoảng trắng (username là định danh, không nên có space)
+  /// - Tối đa 20 ký tự (khớp backend LoginDto @MaxLength(20))
+  String? _validateUsername(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return 'Username is required.';
+    if (v.contains(' ')) return 'Username must not contain spaces.';
+    if (v.length > 20) return 'Username must not exceed 20 characters.';
+    return null;
+  }
+
+  /// Validate password theo business rules:
+  /// - Không được để trống
+  /// - Tối thiểu 6 ký tự (best-practice bảo mật)
+  /// - Tối đa 20 ký tự (khớp backend LoginDto @MaxLength(20))
+  String? _validatePassword(String? value) {
+    final v = value ?? '';
+    if (v.isEmpty) return 'Password is required.';
+    if (v.length < 6) return 'Password must be at least 6 characters.';
+    if (v.length > 20) return 'Password must not exceed 20 characters.';
+    return null;
+  }
+
   Future<void> _submit() async {
     if (_submitting) return;
+
+    // Chạy validate form trước khi gọi API.
+    if (!_formKey.currentState!.validate()) return;
+
     final username = _user.text.trim();
     final password = _pass.text;
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please enter your user name and password.');
-      return;
-    }
+
     FocusScope.of(context).unfocus();
     setState(() {
       _submitting = true;
@@ -68,69 +94,76 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _FieldLabel('Username'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _user,
-                    textInputAction: TextInputAction.next,
-                    autocorrect: false,
-                    decoration: const InputDecoration(
-                      hintText: 'cashier.linh',
-                      prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textMuted),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const _FieldLabel('Password'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _pass,
-                    obscureText: _obscure,
-                    onSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textMuted),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: AppColors.textMuted,
-                        ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const _FieldLabel('Username'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _user,
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      validator: _validateUsername,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: const InputDecoration(
+                        hintText: 'cashier.linh',
+                        prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.textMuted),
                       ),
                     ),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 14),
-                    _ErrorBanner(_error!),
+                    const SizedBox(height: 18),
+                    const _FieldLabel('Password'),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _pass,
+                      obscureText: _obscure,
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: _validatePassword,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      decoration: InputDecoration(
+                        hintText: '••••••••',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textMuted),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                            color: AppColors.textMuted,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      _ErrorBanner(_error!),
+                    ],
+                    const SizedBox(height: 28),
+                    FilledButton(
+                      onPressed: _submitting ? null : _submit,
+                      child: _submitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                            )
+                          : const Text('Login'),
+                    ),
+                    const SizedBox(height: 16),
+                    const Center(
+                      child: Text(
+                        'Trouble signing in? Ask your manager.',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    const Center(
+                      child: Text(
+                        '${AppConstants.appVersionLabel} · ${AppConstants.storeLabel}',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: 0.5),
+                      ),
+                    ),
                   ],
-                  const SizedBox(height: 28),
-                  FilledButton(
-                    onPressed: _submitting ? null : _submit,
-                    child: _submitting
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
-                          )
-                        : const Text('Login'),
-                  ),
-                  const SizedBox(height: 16),
-                  const Center(
-                    child: Text(
-                      'Trouble signing in? Ask your manager.',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Center(
-                    child: Text(
-                      '${AppConstants.appVersionLabel} · ${AppConstants.storeLabel}',
-                      style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: 0.5),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
