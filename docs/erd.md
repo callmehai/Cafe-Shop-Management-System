@@ -16,27 +16,27 @@ Ký hiệu quan hệ Mermaid:
 
 ```mermaid
 erDiagram
-    User ||--o{ Order : "tạo"
-    User ||--o{ Payment : "xử lý"
-    User ||--o{ PurchaseOrder : "lập"
+    User ||--o{ Order : "creates"
+    User ||--o{ Payment : "processes"
+    User ||--o{ PurchaseOrder : "raises"
 
-    Category ||--o{ Product : "phân loại"
+    Category ||--o{ Product : "classifies"
 
-    Product ||--o{ OrderItem : "được đặt"
-    Product ||--o{ ProductIngredient : "có công thức"
-    Ingredient ||--o{ ProductIngredient : "được dùng"
-    Ingredient ||--o{ StockIn : "được nhập"
+    Product ||--o{ OrderItem : "ordered as"
+    Product ||--o{ ProductIngredient : "has recipe"
+    Ingredient ||--o{ ProductIngredient : "used in"
+    Ingredient ||--o{ StockIn : "received as"
 
-    Order ||--o{ OrderItem : "gồm"
-    Order ||--|| Payment : "thanh toán"
-    Table }o--|| Order : "phục vụ"
-    Customer }o--|| Order : "đặt"
+    Order ||--o{ OrderItem : "contains"
+    Order ||--|| Payment : "paid by"
+    Table }o--|| Order : "served at"
+    Customer }o--|| Order : "placed by"
 
-    Customer ||--o{ Payment : "trả"
-    Customer ||--o{ LoyaltyTransaction : "tích/đổi"
-    Payment ||--o{ LoyaltyTransaction : "phát sinh"
+    Customer ||--o{ Payment : "pays"
+    Customer ||--o{ LoyaltyTransaction : "earns/redeems"
+    Payment ||--o{ LoyaltyTransaction : "generates"
 
-    PurchaseOrder ||--o{ StockIn : "gồm"
+    PurchaseOrder ||--o{ StockIn : "contains"
 
     User {
         int id PK
@@ -175,25 +175,25 @@ erDiagram
 
 ```mermaid
 erDiagram
-    User ||--o{ Order : "tạo"
-    Table }o--|| Order : "phục vụ"
-    Customer }o--|| Order : "đặt"
-    Order ||--o{ OrderItem : "gồm"
-    Product ||--o{ OrderItem : "được đặt"
-    Order ||--|| Payment : "thanh toán"
-    Payment ||--o{ LoyaltyTransaction : "phát sinh"
-    Customer ||--o{ LoyaltyTransaction : "tích/đổi"
+    User ||--o{ Order : "creates"
+    Table }o--|| Order : "served at"
+    Customer }o--|| Order : "placed by"
+    Order ||--o{ OrderItem : "contains"
+    Product ||--o{ OrderItem : "ordered as"
+    Order ||--|| Payment : "paid by"
+    Payment ||--o{ LoyaltyTransaction : "generates"
+    Customer ||--o{ LoyaltyTransaction : "earns/redeems"
 ```
 
 ### Kho — công thức và nhập hàng
 
 ```mermaid
 erDiagram
-    Product ||--o{ ProductIngredient : "có công thức"
-    Ingredient ||--o{ ProductIngredient : "được dùng"
-    PurchaseOrder ||--o{ StockIn : "gồm"
-    Ingredient ||--o{ StockIn : "được nhập"
-    User ||--o{ PurchaseOrder : "lập"
+    Product ||--o{ ProductIngredient : "has recipe"
+    Ingredient ||--o{ ProductIngredient : "used in"
+    PurchaseOrder ||--o{ StockIn : "contains"
+    Ingredient ||--o{ StockIn : "received as"
+    User ||--o{ PurchaseOrder : "raises"
 ```
 
 ---
@@ -203,7 +203,7 @@ erDiagram
 - `ProductIngredient` có khóa chính **cặp** `[productId, ingredientId]` — một nguyên liệu chỉ xuất
   hiện 1 lần trong công thức của mỗi món (BR-08).
 - `Payment.orderId` là FK kèm `@unique` → quan hệ 1-1 với `Order` (BR-03: mỗi order một phương
-  thức thanh toán). Mermaid không có ký hiệu FK+UK nên ghi là `FK_UK`.
+  thức thanh toán) — trong sơ đồ ghi là `FK,UK`.
 - `Order.tableId` null = takeaway; `Order.customerId` null = khách vãng lai.
 - `AuditLog.userId` / `username` chỉ là snapshot, **không khai báo FK** tới `User` — cố ý, để log
   còn nguyên khi tài khoản bị xóa (CR-11).
