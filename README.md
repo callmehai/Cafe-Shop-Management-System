@@ -34,6 +34,25 @@ flutter pub get
 flutter run                   # nhớ trỏ API_BASE_URL về backend (xem lib/core/config/env.dart)
 ```
 
+## Tài khoản thử nghiệm mặc định (Default Accounts)
+Sau khi chạy seed dữ liệu hoặc cập nhật database, bạn có thể dùng các tài khoản mặc định dưới đây để đăng nhập và kiểm thử theo từng vai trò (role):
+
+| Role (Vai trò) | Username | Password | Tên đầy đủ (Full Name) |
+| :--- | :--- | :--- | :--- |
+| **ADMINISTRATOR** | `admin` | `admin123` | System Admin |
+| **MANAGER** | `manager.an` | `123456` | Tran Van An |
+| **CASHIER** | `cashier.linh` | `123456` | Linh Nguyen |
+| **BARISTA** | `barista.huy` | `123456` | Pham Quang Huy |
+
+## Tài liệu
+| File | Nội dung |
+| :--- | :--- |
+| [CSMS_PROJECT_CONTEXT.md](CSMS_PROJECT_CONTEXT.md) | SRS rút gọn: actors, use case, business rule (BR-xx/CR-xx) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Tổng quan kiến trúc, luồng nghiệp vụ cốt lõi, quyết định thiết kế |
+| [docs/API.md](docs/API.md) | Toàn bộ REST endpoint, payload & phân quyền |
+| [CHANGELOG.md](CHANGELOG.md) | Lịch sử thay đổi |
+| [docs/system-design.md](docs/system-design.md) · [docs/class-diagrams.md](docs/class-diagrams.md) · [docs/sequence-diagrams.md](docs/sequence-diagrams.md) | Thiết kế chi tiết & sơ đồ |
+
 ## Trạng thái dự án (Release 1.0)
 - ✅ **Data model đầy đủ (Prisma)**: 12 entity SRS + `ProductIngredient` (recipe) cho BR-08 + bảng `AuditLog` cho CR-11.
 - ✅ **Auth & Security**: Đăng nhập, phân quyền RBAC (JWT, `@Roles()`), khóa tài khoản sau 5 lần sai (BR-10), và rate-limiting chống brute-force.

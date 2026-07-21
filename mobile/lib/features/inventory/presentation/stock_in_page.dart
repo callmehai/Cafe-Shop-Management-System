@@ -9,10 +9,10 @@ import '../data/inventory_repository.dart';
 import '../domain/ingredient_model.dart';
 
 class _Line {
-  _Line({this.ingredientId, this.quantity = 0, this.unitCost = 0});
+  _Line();
   int? ingredientId;
-  double quantity;
-  double unitCost;
+  double quantity = 0;
+  double unitCost = 0;
   double get total => quantity * unitCost;
 }
 
@@ -159,7 +159,7 @@ class _LineCard extends StatelessWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: line.ingredientId,
+                  initialValue: line.ingredientId,
                   isExpanded: true,
                   decoration: const InputDecoration(hintText: 'Ingredient', isDense: true),
                   items: ingredients.map((i) => DropdownMenuItem(value: i.id, child: Text(i.name))).toList(),

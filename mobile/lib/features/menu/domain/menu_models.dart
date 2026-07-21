@@ -19,6 +19,40 @@ class Category {
   }
 }
 
+/// 1 dòng công thức (BR-08): lượng nguyên liệu cần cho 1 đơn vị sản phẩm.
+class RecipeLine {
+  const RecipeLine({
+    required this.ingredientId,
+    required this.ingredientName,
+    required this.quantity,
+  });
+
+  final int ingredientId;
+  final String ingredientName;
+  final double quantity;
+
+  factory RecipeLine.fromJson(Map<String, dynamic> json) {
+    final ing = json['ingredient'];
+    return RecipeLine(
+      ingredientId: json['ingredientId'] as int,
+      ingredientName: ing is Map ? (ing['name'] as String? ?? '') : '',
+      quantity: parseAmount(json['quantity']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'ingredientId': ingredientId, 'quantity': quantity};
+
+  /// "120" hoặc "0.5" — bỏ phần thập phân thừa.
+  String get quantityLabel =>
+      quantity == quantity.roundToDouble() ? quantity.toStringAsFixed(0) : quantity.toString();
+
+  RecipeLine copyWith({double? quantity}) => RecipeLine(
+        ingredientId: ingredientId,
+        ingredientName: ingredientName,
+        quantity: quantity ?? this.quantity,
+      );
+}
+
 /// Sản phẩm (Product) trong menu.
 class Product {
   const Product({
@@ -31,6 +65,7 @@ class Product {
     this.size,
     this.description,
     this.imageUrl,
+    this.recipe = const [],
   });
 
   final int id;
@@ -42,6 +77,9 @@ class Product {
   final String? size;
   final String? description;
   final String? imageUrl;
+
+  /// Nguyên liệu tiêu tốn cho 1 đơn vị món (BR-08).
+  final List<RecipeLine> recipe;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     final cat = json['category'];
@@ -55,6 +93,9 @@ class Product {
       size: json['size'] as String?,
       description: json['description'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      recipe: (json['recipe'] as List? ?? [])
+          .map((e) => RecipeLine.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 

@@ -47,6 +47,12 @@ export class ProductsController {
     return this.menu.listProducts(search);
   }
 
+  // Chi tiết 1 món kèm công thức nguyên liệu (BR-08).
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.menu.getProduct(id);
+  }
+
   // Ghi: chỉ Manager/Admin (BR-05).
   @Roles(Role.MANAGER, Role.ADMINISTRATOR)
   @Post()

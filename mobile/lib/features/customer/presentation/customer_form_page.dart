@@ -81,19 +81,41 @@ class _CustomerFormPageState extends ConsumerState<CustomerFormPage> {
             TextFormField(
               controller: _name,
               decoration: const InputDecoration(labelText: 'Full name'),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Name is required.' : null,
+              validator: (v) {
+                final t = v?.trim() ?? '';
+                if (t.isEmpty) return 'Name is required.';
+                if (t.length > 80) return 'Name must not exceed 80 characters.';
+                return null;
+              },
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
               decoration: const InputDecoration(labelText: 'Phone (optional)'),
+              validator: (v) {
+                final t = v?.trim() ?? '';
+                if (t.isEmpty) return null; // optional field
+                if (!RegExp(r'^\d{10,11}$').hasMatch(t)) {
+                  return 'Phone must be 10–11 digits.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 14),
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
               decoration: const InputDecoration(labelText: 'Email (optional)'),
+              validator: (v) {
+                final t = v?.trim() ?? '';
+                if (t.isEmpty) return null; // optional field
+                // Simple but reliable email format check.
+                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) {
+                  return 'Enter a valid email address.';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 24),
             FilledButton(

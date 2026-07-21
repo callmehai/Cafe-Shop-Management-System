@@ -75,7 +75,30 @@ class AccountView extends ConsumerWidget {
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  backgroundColor: AppColors.surface,
+                  title: const Text('Log out'),
+                  content: const Text('Are you sure you want to log out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Log out'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) {
+                ref.read(authControllerProvider.notifier).logout();
+              }
+            },
             icon: const Icon(Icons.logout_rounded, color: AppColors.danger),
             label: const Text('Log out', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(

@@ -219,7 +219,7 @@ class _OrderDetailsPageState extends ConsumerState<OrderDetailsPage> {
                     const SizedBox(height: 8),
                     const Divider(color: AppColors.border),
                     _TotalRow(label: 'Subtotal', value: formatVnd(_subtotal)),
-                    _TotalRow(label: 'Discount', value: '−0₫', muted: true),
+                    const _TotalRow(label: 'Discount', value: '−0₫', muted: true),
                     _TotalRow(label: 'Total', value: formatVnd(_subtotal), bold: true),
                   ],
                 ),

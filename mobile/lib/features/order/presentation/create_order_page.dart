@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/format.dart';
+import '../../customer/domain/customer_model.dart';
 import '../../menu/data/menu_repository.dart';
 import '../../menu/domain/menu_models.dart';
 import '../../tables/data/tables_repository.dart';
 import '../../tables/domain/table_model.dart';
 import '../data/orders_repository.dart';
 import 'add_item_sheet.dart';
+import 'customer_picker_page.dart';
 import 'order_details_page.dart';
 import 'table_picker_page.dart';
 
@@ -32,6 +34,7 @@ class CreateOrderPage extends ConsumerStatefulWidget {
 class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
   final List<_CartLine> _cart = [];
   TableModel? _table;
+  Customer? _customer;
   String _query = '';
   String? _category;
   bool _submitting = false;
@@ -52,6 +55,14 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
     if (picked != null) setState(() => _table = picked);
   }
 
+  Future<void> _pickCustomer() async {
+    final result = await Navigator.of(context).push<CustomerPickerResult>(
+      MaterialPageRoute(builder: (_) => CustomerPickerPage(selectedId: _customer?.id)),
+    );
+    // null = back/hủy (giữ nguyên); result.customer == null = bỏ gán khách.
+    if (result != null) setState(() => _customer = result.customer);
+  }
+
   Future<void> _review() async {
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -63,6 +74,7 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
     try {
       final order = await ref.read(ordersRepositoryProvider).createOrder(
             tableId: _table?.id,
+            customerId: _customer?.id,
             items: _cart
                 .map((l) => {
                       'productId': l.product.id,
@@ -122,12 +134,12 @@ class _CreateOrderPageState extends ConsumerState<CreateOrderPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _SelectorCard(
-                    icon: Icons.person_add_alt,
+                    icon: _customer == null ? Icons.person_add_alt : Icons.person,
                     label: 'Customer',
-                    value: 'Add customer',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Customer lookup — coming in a later phase')),
-                    ),
+                    value: _customer == null
+                        ? 'Add customer'
+                        : '${_customer!.fullName} · ${_customer!.loyaltyPoints} pts',
+                    onTap: _pickCustomer,
                   ),
                 ),
               ],
