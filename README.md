@@ -39,10 +39,10 @@ Sau khi chạy seed dữ liệu hoặc cập nhật database, bạn có thể d�
 
 | Role (Vai trò) | Username | Password | Tên đầy đủ (Full Name) |
 | :--- | :--- | :--- | :--- |
-| **ADMINISTRATOR** | `admin` | `admin123` | System Admin |
-| **MANAGER** | `manager.an` | `123456` | Tran Van An |
-| **CASHIER** | `cashier.linh` | `123456` | Linh Nguyen |
-| **BARISTA** | `barista.huy` | `123456` | Pham Quang Huy |
+| **ADMINISTRATOR** | `admin` | `123123` | System Admin |
+| **MANAGER** | `manager.an` | `123123` | Tran Van An |
+| **CASHIER** | `cashier.linh` | `123123` | Linh Nguyen |
+| **BARISTA** | `barista.huy` | `123123` | Pham Quang Huy |
 
 ## Tài liệu
 | File | Nội dung |
