@@ -28,8 +28,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
+<<<<<<< Updated upstream
   Future<void> _submit() async {
     if (_submitting) return;
+=======
+  String? _validateUsername(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return 'Username is required.';
+    if (v.contains(' ')) return 'Username must not contain spaces.';
+    if (v.length > 20) return 'Username must not exceed 20 characters.';
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    final v = value ?? '';
+    if (v.isEmpty) return 'Password is required.';
+    if (v.length < 6) return 'Password must be at least 6 characters.';
+    if (v.length > 20) return 'Password must not exceed 20 characters.';
+    return null;
+  }
+
+  Future<void> _submit() async {
+    if (_submitting) return;
+
+    if (!_formKey.currentState!.validate()) return;
+
+>>>>>>> Stashed changes
     final username = _user.text.trim();
     final password = _pass.text;
     if (username.isEmpty || password.isEmpty) {
@@ -54,7 +78,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           fallback: 'Incorrect user name or password. Please check again.',
         );
       }
-      // Thành công: router redirect tự đưa sang /home.
     });
   }
 
@@ -62,6 +85,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.cream,
+<<<<<<< Updated upstream
       body: Column(
         children: [
           _BrandHeader(),
@@ -104,6 +128,124 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     _ErrorBanner(_error!),
+=======
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            const _BrandHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _user,
+                      textInputAction: TextInputAction.next,
+                      autocorrect: false,
+                      validator: _validateUsername,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'cashier.linh',
+                        fillColor: Colors.white,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textMuted, size: 22),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.terracotta, width: 1.5)),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Password',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _pass,
+                      obscureText: _obscure,
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: _validatePassword,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: '••••••••',
+                        fillColor: Colors.white,
+                        filled: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textMuted, size: 22),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                            color: AppColors.textMuted,
+                            size: 22,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.terracotta, width: 1.5)),
+                      ),
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 14),
+                      _ErrorBanner(_error!),
+                    ],
+                    const SizedBox(height: 24),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.terracotta.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        height: 54,
+                        child: FilledButton(
+                          onPressed: _submitting ? null : _submit,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.terracotta,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
+                                )
+                              : const Text(
+                                  'Login',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Center(
+                      child: Text(
+                        'Trouble signing in? Ask your manager.',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(height: 60),
+                    const Center(
+                      child: Text(
+                        '${AppConstants.appVersionLabel} · ${AppConstants.storeLabel}',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12, letterSpacing: 0.5),
+                      ),
+                    ),
+>>>>>>> Stashed changes
                   ],
                   const SizedBox(height: 28),
                   FilledButton(
@@ -133,63 +275,72 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
+
   @override
   Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.fromLTRB(24, MediaQuery.of(context).padding.top + 36, 24, 36),
-      decoration: const BoxDecoration(
-        color: AppColors.espresso,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
+      color: const Color(0xFF382B24),
+      padding: EdgeInsets.fromLTRB(24, topPadding + 28, 24, 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(18),
+          Center(
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4A3B33),
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: const Icon(Icons.coffee_rounded, color: Colors.white, size: 34),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Brew & Co.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'serif',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'COUNTER POS',
+                  style: TextStyle(
+                    color: Color(0xFFAD9C92),
+                    fontSize: 11,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-            child: const Icon(Icons.coffee_rounded, color: Colors.white, size: 30),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           const Text(
-            'Brew & Co.',
+            'Username',
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
+              color: Color(0xFF9E8E84),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'COUNTER POS',
-            style: TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 3),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
     );
   }
 }
@@ -219,3 +370,4 @@ class _ErrorBanner extends StatelessWidget {
     );
   }
 }
+
